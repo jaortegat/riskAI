@@ -1,0 +1,7 @@
+${AnsiColor.YELLOW}  ____  _     _        ${AnsiColor.GREEN} _    ___
+${AnsiColor.YELLOW} |  _ \(_)___| | __    ${AnsiColor.GREEN}/ \  |_ _|
+${AnsiColor.YELLOW} | |_) | / __| |/ /   ${AnsiColor.GREEN}/ _ \  | |
+${AnsiColor.YELLOW} |  _ <| \__ \   <   ${AnsiColor.GREEN}/ ___ \ | |
+${AnsiColor.YELLOW} |_| \_\_|___/_|\_\ ${AnsiColor.GREEN}/_/   \_\___|
+${AnsiColor.DEFAULT}
+ :: RiskAI Server ::               (v${spring.application.version})

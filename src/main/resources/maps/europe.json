@@ -1,0 +1,66 @@
+{
+  "id": "europe",
+  "name": "Europe",
+  "description": "A detailed map of Europe with 4 regions and 24 territories. Ideal for shorter games.",
+  "author": "Built-in",
+  "minPlayers": 2,
+  "maxPlayers": 4,
+  "areas": [
+    {
+      "key": "WESTERN_EUROPE",
+      "name": "Western Europe",
+      "bonusArmies": 4,
+      "color": "#4169E1",
+      "territories": [
+        { "key": "PORTUGAL",      "name": "Portugal",      "neighbors": ["SPAIN"],                                         "mapX": 80,  "mapY": 370 },
+        { "key": "SPAIN",         "name": "Spain",         "neighbors": ["PORTUGAL","FRANCE","NORTH_AFRICA"],               "mapX": 140, "mapY": 380 },
+        { "key": "FRANCE",        "name": "France",        "neighbors": ["SPAIN","GREAT_BRITAIN","BENELUX","SWITZERLAND","ITALY"], "mapX": 210, "mapY": 310 },
+        { "key": "GREAT_BRITAIN", "name": "Great Britain",  "neighbors": ["FRANCE","BENELUX","ICELAND","NORWAY"],           "mapX": 180, "mapY": 210 },
+        { "key": "ICELAND",       "name": "Iceland",        "neighbors": ["GREAT_BRITAIN","NORWAY"],                        "mapX": 130, "mapY": 80  },
+        { "key": "BENELUX",       "name": "Benelux",        "neighbors": ["FRANCE","GREAT_BRITAIN","GERMANY"],              "mapX": 260, "mapY": 250 }
+      ]
+    },
+    {
+      "key": "CENTRAL_EUROPE",
+      "name": "Central Europe",
+      "bonusArmies": 5,
+      "color": "#FFD700",
+      "territories": [
+        { "key": "GERMANY",      "name": "Germany",       "neighbors": ["BENELUX","SWITZERLAND","AUSTRIA","POLAND","DENMARK"],        "mapX": 310, "mapY": 260 },
+        { "key": "SWITZERLAND",  "name": "Switzerland",   "neighbors": ["FRANCE","GERMANY","AUSTRIA","ITALY"],                        "mapX": 280, "mapY": 310 },
+        { "key": "AUSTRIA",      "name": "Austria",       "neighbors": ["GERMANY","SWITZERLAND","ITALY","CZECH_REPUBLIC","HUNGARY"],  "mapX": 340, "mapY": 310 },
+        { "key": "ITALY",        "name": "Italy",         "neighbors": ["FRANCE","SWITZERLAND","AUSTRIA","GREECE"],                   "mapX": 300, "mapY": 380 },
+        { "key": "CZECH_REPUBLIC","name": "Czech Republic","neighbors": ["GERMANY","AUSTRIA","POLAND","HUNGARY"],                    "mapX": 370, "mapY": 270 },
+        { "key": "HUNGARY",      "name": "Hungary",       "neighbors": ["AUSTRIA","CZECH_REPUBLIC","POLAND","ROMANIA","GREECE"],      "mapX": 410, "mapY": 320 },
+        { "key": "POLAND",       "name": "Poland",        "neighbors": ["GERMANY","CZECH_REPUBLIC","HUNGARY","SWEDEN","UKRAINE","BALTIC_STATES"], "mapX": 400, "mapY": 230 }
+      ]
+    },
+    {
+      "key": "NORTHERN_EUROPE",
+      "name": "Northern Europe",
+      "bonusArmies": 3,
+      "color": "#32CD32",
+      "territories": [
+        { "key": "NORWAY",         "name": "Norway",         "neighbors": ["ICELAND","GREAT_BRITAIN","SWEDEN","DENMARK"],   "mapX": 300, "mapY": 110 },
+        { "key": "SWEDEN",         "name": "Sweden",         "neighbors": ["NORWAY","DENMARK","FINLAND","POLAND"],          "mapX": 360, "mapY": 120 },
+        { "key": "FINLAND",        "name": "Finland",        "neighbors": ["SWEDEN","BALTIC_STATES","RUSSIA"],              "mapX": 430, "mapY": 100 },
+        { "key": "DENMARK",        "name": "Denmark",        "neighbors": ["NORWAY","SWEDEN","GERMANY"],                    "mapX": 320, "mapY": 190 },
+        { "key": "BALTIC_STATES",  "name": "Baltic States",  "neighbors": ["FINLAND","POLAND","UKRAINE","RUSSIA"],          "mapX": 440, "mapY": 180 }
+      ]
+    },
+    {
+      "key": "EASTERN_EUROPE",
+      "name": "Eastern Europe",
+      "bonusArmies": 5,
+      "color": "#FF6347",
+      "territories": [
+        { "key": "UKRAINE",       "name": "Ukraine",       "neighbors": ["POLAND","BALTIC_STATES","RUSSIA","ROMANIA","TURKEY"],  "mapX": 500, "mapY": 270 },
+        { "key": "RUSSIA",        "name": "Russia",        "neighbors": ["FINLAND","BALTIC_STATES","UKRAINE","TURKEY"],          "mapX": 540, "mapY": 150 },
+        { "key": "ROMANIA",       "name": "Romania",       "neighbors": ["HUNGARY","UKRAINE","TURKEY","GREECE"],                 "mapX": 460, "mapY": 340 },
+        { "key": "GREECE",        "name": "Greece",        "neighbors": ["ITALY","HUNGARY","ROMANIA","TURKEY","NORTH_AFRICA"],   "mapX": 420, "mapY": 410 },
+        { "key": "TURKEY",        "name": "Turkey",        "neighbors": ["UKRAINE","RUSSIA","ROMANIA","GREECE","NORTH_AFRICA"],  "mapX": 530, "mapY": 380 },
+        { "key": "NORTH_AFRICA",  "name": "North Africa",  "neighbors": ["SPAIN","GREECE","TURKEY"],                             "mapX": 250, "mapY": 470 }
+      ]
+    }
+  ]
+}

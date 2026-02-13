@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: riskai-game
+    version: @project.version@
+  output:
+    ansi:
+      enabled: always
+
+  # Database Configuration
+  datasource:
+    url: jdbc:h2:mem:riskaidb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  # Thymeleaf Configuration
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+
+  # Jackson Configuration
+  jackson:
+    deserialization:
+      fail-on-null-for-primitives: false
+
+  # Security
+  security:
+    user:
+      name: admin
+      password: admin123
+
+# Server Configuration
+server:
+  port: 8080
+
+# Game Configuration
+game:
+  maps-directory: maps
+  max-players: 6
+  min-players: 2
+  cpu:
+    think-delay-ms: 3000
+    default-difficulty: MEDIUM
+
+# Logging
+logging:
+  level:
+    com.risk: DEBUG
+    org.springframework.web.socket: INFO

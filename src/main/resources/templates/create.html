@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Game - RiskAI</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <span class="text-danger fw-bold">RISK<span class="text-warning">AI</span></span> - World Domination
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mt-3">
+        <div class="row justify-content-center">
+            <div class="col-lg-9 col-md-11">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white py-2">
+                        <h4 class="mb-0">🎮 Create New Game</h4>
+                    </div>
+                    <div class="card-body py-3">
+                        <form id="create-game-form">
+                            <div class="row">
+                                <!-- Left Column: Game & Players -->
+                                <div class="col-md-6">
+                                    <div class="row mb-2">
+                                        <div class="col-7">
+                                            <label for="gameName" class="form-label mb-1">Game Name</label>
+                                            <input type="text" class="form-control form-control-sm" id="gameName" 
+                                                   placeholder="Enter game name" required minlength="3" maxlength="50">
+                                        </div>
+                                        <div class="col-5">
+                                            <label for="playerName" class="form-label mb-1">Your Name <small class="text-muted">(optional)</small></label>
+                                            <input type="text" class="form-control form-control-sm" id="playerName" 
+                                                   placeholder="Your name" maxlength="30">
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <label for="mapId" class="form-label mb-1">🗺️ Map</label>
+                                        <select class="form-select form-select-sm" id="mapId" required>
+                                            <option th:each="map : ${maps}" 
+                                                    th:value="${map.id}" 
+                                                    th:text="${map.name + ' — ' + map.territoryCount + ' territories, ' + map.areaCount + ' regions'}"
+                                                    th:attr="data-description=${map.description},data-min=${map.minPlayers},data-max=${map.maxPlayers}">
+                                            </option>
+                                        </select>
+                                        <div id="map-description" class="form-text mt-0"></div>
+                                    </div>
+
+                                    <div class="row mb-2">
+                                        <div class="col-6">
+                                            <label for="minPlayers" class="form-label mb-1">Min Players</label>
+                                            <select class="form-select form-select-sm" id="minPlayers">
+                                                <option value="2" selected>2</option>
+                                                <option value="3">3</option>
+                                                <option value="4">4</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="maxPlayers" class="form-label mb-1">Max Players</label>
+                                            <select class="form-select form-select-sm" id="maxPlayers">
+                                                <option value="2">2</option>
+                                                <option value="3">3</option>
+                                                <option value="4">4</option>
+                                                <option value="5">5</option>
+                                                <option value="6" selected>6</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-2">
+                                        <div class="col-6">
+                                            <label for="cpuPlayers" class="form-label mb-1">CPU Players</label>
+                                            <select class="form-select form-select-sm" id="cpuPlayers">
+                                                <option value="0">No CPU players</option>
+                                                <option value="1">1 CPU</option>
+                                                <option value="2">2 CPU</option>
+                                                <option value="3">3 CPU</option>
+                                                <option value="4">4 CPU</option>
+                                                <option value="5">5 CPU</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-6" id="cpu-difficulty-container" style="display: none;">
+                                            <label for="cpuDifficulty" class="form-label mb-1">CPU Difficulty</label>
+                                            <select class="form-select form-select-sm" id="cpuDifficulty">
+                                                <option value="EASY">Easy</option>
+                                                <option value="MEDIUM" selected>Medium</option>
+                                                <option value="HARD">Hard</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right Column: Win Condition -->
+                                <div class="col-md-6">
+                                    <h6 class="mb-2">🏆 Win Condition</h6>
+
+                                    <div class="mb-2">
+                                        <label for="gameMode" class="form-label mb-1">Game Mode</label>
+                                        <select class="form-select form-select-sm" id="gameMode">
+                                            <option value="CLASSIC" selected>Classic — Eliminate all opponents</option>
+                                            <option value="DOMINATION">Domination — Control territory %</option>
+                                            <option value="TURN_LIMIT">Turn Limit — Most territories after N turns</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-2" id="domination-settings" style="display: none;">
+                                        <label for="dominationPercent" class="form-label mb-1">Domination Threshold: <span id="dominationPercentLabel">70</span>%</label>
+                                        <input type="range" class="form-range" id="dominationPercent" min="40" max="90" step="5" value="70">
+                                        <div class="form-text mt-0">Win by controlling this % of the map.</div>
+                                    </div>
+
+                                    <div class="mb-2" id="turnlimit-settings" style="display: none;">
+                                        <label for="turnLimit" class="form-label mb-1">Turn Limit</label>
+                                        <input type="number" class="form-control form-control-sm" id="turnLimit" min="5" max="100" value="20">
+                                        <div class="form-text mt-0">Most territories after N turns wins.</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-2">
+
+                            <div class="d-flex gap-2 justify-content-end">
+                                <a href="/" class="btn btn-outline-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-success">
+                                    🚀 Create Game
+                                </button>
+                            </div>
+                        </form>
+
+                        <div id="error-message" class="alert alert-danger mt-2 d-none"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Map selector description
+        const mapSelect = document.getElementById('mapId');
+        const mapDesc = document.getElementById('map-description');
+        function updateMapDescription() {
+            const opt = mapSelect.options[mapSelect.selectedIndex];
+            if (opt) {
+                mapDesc.textContent = opt.getAttribute('data-description') || '';
+            }
+        }
+        mapSelect.addEventListener('change', updateMapDescription);
+        updateMapDescription();
+
+        // --- Min/Max players cross-validation ---
+        const minSelect = document.getElementById('minPlayers');
+        const maxSelect = document.getElementById('maxPlayers');
+
+        minSelect.addEventListener('change', function() {
+            if (parseInt(minSelect.value) > parseInt(maxSelect.value)) {
+                maxSelect.value = minSelect.value;
+            }
+            updateCpuOptions();
+        });
+        maxSelect.addEventListener('change', function() {
+            if (parseInt(maxSelect.value) < parseInt(minSelect.value)) {
+                minSelect.value = maxSelect.value;
+            }
+            updateCpuOptions();
+        });
+
+        // --- Dynamic CPU player limit based on maxPlayers ---
+        function updateCpuOptions() {
+            const maxPlayers = parseInt(maxSelect.value);
+            const hasHuman = document.getElementById('playerName').value.trim().length > 0;
+            const maxCpu = hasHuman ? maxPlayers - 1 : maxPlayers;
+            const cpuSelect = document.getElementById('cpuPlayers');
+            const currentVal = parseInt(cpuSelect.value);
+            cpuSelect.innerHTML = '';
+            for (let i = 0; i <= maxCpu; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = i === 0 ? 'No CPU players' : i + ' CPU player' + (i > 1 ? 's' : '');
+                cpuSelect.appendChild(opt);
+            }
+            cpuSelect.value = Math.min(currentVal, maxCpu);
+            // Toggle difficulty selector
+            document.getElementById('cpu-difficulty-container').style.display = 
+                parseInt(cpuSelect.value) > 0 ? '' : 'none';
+        }
+        document.getElementById('playerName').addEventListener('input', updateCpuOptions);
+        updateCpuOptions();
+
+        document.getElementById('cpuPlayers').addEventListener('change', function() {
+            const container = document.getElementById('cpu-difficulty-container');
+            container.style.display = this.value > 0 ? '' : 'none';
+        });
+
+        // --- Game mode conditional settings ---
+        const gameModeSelect = document.getElementById('gameMode');
+        const dominationSettings = document.getElementById('domination-settings');
+        const turnlimitSettings = document.getElementById('turnlimit-settings');
+        const dominationRange = document.getElementById('dominationPercent');
+        const dominationLabel = document.getElementById('dominationPercentLabel');
+
+        gameModeSelect.addEventListener('change', function() {
+            dominationSettings.style.display = this.value === 'DOMINATION' ? 'block' : 'none';
+            turnlimitSettings.style.display = this.value === 'TURN_LIMIT' ? 'block' : 'none';
+        });
+        dominationRange.addEventListener('input', function() {
+            dominationLabel.textContent = this.value;
+        });
+
+        document.getElementById('create-game-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const sessionId = crypto.randomUUID();
+            localStorage.setItem('sessionId', sessionId);
+
+            const playerName = document.getElementById('playerName').value.trim();
+
+            const data = {
+                gameName: document.getElementById('gameName').value,
+                playerName: playerName || null,
+                mapId: document.getElementById('mapId').value,
+                minPlayers: parseInt(document.getElementById('minPlayers').value),
+                maxPlayers: parseInt(document.getElementById('maxPlayers').value),
+                cpuPlayerCount: parseInt(document.getElementById('cpuPlayers').value),
+                cpuDifficulty: document.getElementById('cpuDifficulty').value,
+                gameMode: document.getElementById('gameMode').value,
+                dominationPercent: parseInt(document.getElementById('dominationPercent').value),
+                turnLimit: parseInt(document.getElementById('turnLimit').value)
+            };
+
+            try {
+                const response = await fetch('/api/games', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Session-Id': sessionId
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create game');
+                }
+
+                const game = await response.json();
+                const humanPlayer = game.players.find(p => p.type === 'HUMAN');
+                if (humanPlayer) {
+                    localStorage.setItem('playerId', humanPlayer.id);
+                    localStorage.setItem('playerName', humanPlayer.name);
+                } else {
+                    localStorage.removeItem('playerId');
+                    localStorage.removeItem('playerName');
+                }
+                window.location.href = '/game/' + game.gameId;
+
+            } catch (error) {
+                document.getElementById('error-message').textContent = error.message;
+                document.getElementById('error-message').classList.remove('d-none');
+            }
+        });
+    </script>
+</body>
+</html>

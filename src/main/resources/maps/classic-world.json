@@ -1,0 +1,100 @@
+{
+  "id": "classic-world",
+  "name": "Classic World",
+  "description": "The original Risk world map with 42 territories across 6 continents.",
+  "author": "Built-in",
+  "minPlayers": 2,
+  "maxPlayers": 6,
+  "areas": [
+    {
+      "key": "NORTH_AMERICA",
+      "name": "North America",
+      "bonusArmies": 5,
+      "color": "#FFD700",
+      "territories": [
+        { "key": "ALASKA",               "name": "Alaska",                    "neighbors": ["NORTHWEST_TERRITORY","ALBERTA","KAMCHATKA"],                                    "mapX": 62,  "mapY": 100 },
+        { "key": "NORTHWEST_TERRITORY",  "name": "Northwest Territory",       "neighbors": ["ALASKA","ALBERTA","GREENLAND","ONTARIO"],                                       "mapX": 130, "mapY": 90  },
+        { "key": "GREENLAND",            "name": "Greenland",                 "neighbors": ["NORTHWEST_TERRITORY","ONTARIO","QUEBEC","ICELAND"],                              "mapX": 290, "mapY": 50  },
+        { "key": "ALBERTA",              "name": "Alberta",                   "neighbors": ["ALASKA","NORTHWEST_TERRITORY","ONTARIO","WESTERN_US"],                            "mapX": 120, "mapY": 140 },
+        { "key": "ONTARIO",              "name": "Ontario",                   "neighbors": ["NORTHWEST_TERRITORY","ALBERTA","GREENLAND","QUEBEC","WESTERN_US","EASTERN_US"],   "mapX": 175, "mapY": 145 },
+        { "key": "QUEBEC",               "name": "Quebec",                    "neighbors": ["GREENLAND","ONTARIO","EASTERN_US"],                                              "mapX": 230, "mapY": 145 },
+        { "key": "WESTERN_US",           "name": "Western United States",     "neighbors": ["ALBERTA","ONTARIO","EASTERN_US","CENTRAL_AMERICA"],                              "mapX": 120, "mapY": 195 },
+        { "key": "EASTERN_US",           "name": "Eastern United States",     "neighbors": ["ONTARIO","QUEBEC","WESTERN_US","CENTRAL_AMERICA"],                               "mapX": 185, "mapY": 210 },
+        { "key": "CENTRAL_AMERICA",      "name": "Central America",           "neighbors": ["WESTERN_US","EASTERN_US","VENEZUELA"],                                           "mapX": 135, "mapY": 270 }
+      ]
+    },
+    {
+      "key": "SOUTH_AMERICA",
+      "name": "South America",
+      "bonusArmies": 2,
+      "color": "#FF6347",
+      "territories": [
+        { "key": "VENEZUELA",  "name": "Venezuela",  "neighbors": ["CENTRAL_AMERICA","BRAZIL","PERU"],          "mapX": 185, "mapY": 320 },
+        { "key": "BRAZIL",     "name": "Brazil",     "neighbors": ["VENEZUELA","PERU","ARGENTINA","NORTH_AFRICA"], "mapX": 230, "mapY": 390 },
+        { "key": "PERU",       "name": "Peru",       "neighbors": ["VENEZUELA","BRAZIL","ARGENTINA"],           "mapX": 175, "mapY": 395 },
+        { "key": "ARGENTINA",  "name": "Argentina",  "neighbors": ["PERU","BRAZIL"],                            "mapX": 190, "mapY": 480 }
+      ]
+    },
+    {
+      "key": "EUROPE",
+      "name": "Europe",
+      "bonusArmies": 5,
+      "color": "#4169E1",
+      "territories": [
+        { "key": "ICELAND",          "name": "Iceland",          "neighbors": ["GREENLAND","GREAT_BRITAIN","SCANDINAVIA"],                                       "mapX": 345, "mapY": 95  },
+        { "key": "GREAT_BRITAIN",    "name": "Great Britain",    "neighbors": ["ICELAND","SCANDINAVIA","NORTHERN_EUROPE","WESTERN_EUROPE"],                      "mapX": 355, "mapY": 160 },
+        { "key": "SCANDINAVIA",      "name": "Scandinavia",      "neighbors": ["ICELAND","GREAT_BRITAIN","NORTHERN_EUROPE","UKRAINE"],                           "mapX": 410, "mapY": 100 },
+        { "key": "WESTERN_EUROPE",   "name": "Western Europe",   "neighbors": ["GREAT_BRITAIN","NORTHERN_EUROPE","SOUTHERN_EUROPE","NORTH_AFRICA"],              "mapX": 365, "mapY": 230 },
+        { "key": "NORTHERN_EUROPE",  "name": "Northern Europe",  "neighbors": ["GREAT_BRITAIN","SCANDINAVIA","WESTERN_EUROPE","SOUTHERN_EUROPE","UKRAINE"],      "mapX": 415, "mapY": 175 },
+        { "key": "SOUTHERN_EUROPE",  "name": "Southern Europe",  "neighbors": ["WESTERN_EUROPE","NORTHERN_EUROPE","UKRAINE","NORTH_AFRICA","EGYPT","MIDDLE_EAST"], "mapX": 425, "mapY": 225 },
+        { "key": "UKRAINE",          "name": "Ukraine",          "neighbors": ["SCANDINAVIA","NORTHERN_EUROPE","SOUTHERN_EUROPE","URAL","AFGHANISTAN","MIDDLE_EAST"], "mapX": 480, "mapY": 150 }
+      ]
+    },
+    {
+      "key": "AFRICA",
+      "name": "Africa",
+      "bonusArmies": 3,
+      "color": "#8B4513",
+      "territories": [
+        { "key": "NORTH_AFRICA",   "name": "North Africa",   "neighbors": ["WESTERN_EUROPE","SOUTHERN_EUROPE","EGYPT","EAST_AFRICA","CONGO","BRAZIL"],  "mapX": 380, "mapY": 310 },
+        { "key": "EGYPT",          "name": "Egypt",          "neighbors": ["SOUTHERN_EUROPE","NORTH_AFRICA","EAST_AFRICA","MIDDLE_EAST"],                "mapX": 440, "mapY": 290 },
+        { "key": "EAST_AFRICA",    "name": "East Africa",    "neighbors": ["EGYPT","NORTH_AFRICA","CONGO","SOUTH_AFRICA","MADAGASCAR","MIDDLE_EAST"],    "mapX": 465, "mapY": 370 },
+        { "key": "CONGO",          "name": "Congo",          "neighbors": ["NORTH_AFRICA","EAST_AFRICA","SOUTH_AFRICA"],                                 "mapX": 425, "mapY": 400 },
+        { "key": "SOUTH_AFRICA",   "name": "South Africa",   "neighbors": ["CONGO","EAST_AFRICA","MADAGASCAR"],                                         "mapX": 435, "mapY": 475 },
+        { "key": "MADAGASCAR",     "name": "Madagascar",     "neighbors": ["EAST_AFRICA","SOUTH_AFRICA"],                                               "mapX": 500, "mapY": 460 }
+      ]
+    },
+    {
+      "key": "ASIA",
+      "name": "Asia",
+      "bonusArmies": 7,
+      "color": "#32CD32",
+      "territories": [
+        { "key": "URAL",        "name": "Ural",        "neighbors": ["UKRAINE","SIBERIA","AFGHANISTAN","CHINA"],                       "mapX": 540, "mapY": 120 },
+        { "key": "SIBERIA",     "name": "Siberia",     "neighbors": ["URAL","YAKUTSK","IRKUTSK","MONGOLIA","CHINA"],                   "mapX": 590, "mapY": 90  },
+        { "key": "YAKUTSK",     "name": "Yakutsk",     "neighbors": ["SIBERIA","IRKUTSK","KAMCHATKA"],                                 "mapX": 650, "mapY": 70  },
+        { "key": "KAMCHATKA",   "name": "Kamchatka",   "neighbors": ["YAKUTSK","IRKUTSK","MONGOLIA","JAPAN","ALASKA"],                 "mapX": 720, "mapY": 85  },
+        { "key": "IRKUTSK",     "name": "Irkutsk",     "neighbors": ["SIBERIA","YAKUTSK","KAMCHATKA","MONGOLIA"],                      "mapX": 630, "mapY": 130 },
+        { "key": "MONGOLIA",    "name": "Mongolia",    "neighbors": ["SIBERIA","IRKUTSK","KAMCHATKA","JAPAN","CHINA"],                 "mapX": 640, "mapY": 175 },
+        { "key": "JAPAN",       "name": "Japan",       "neighbors": ["KAMCHATKA","MONGOLIA"],                                          "mapX": 720, "mapY": 185 },
+        { "key": "AFGHANISTAN", "name": "Afghanistan", "neighbors": ["UKRAINE","URAL","CHINA","INDIA","MIDDLE_EAST"],                  "mapX": 530, "mapY": 200 },
+        { "key": "CHINA",       "name": "China",       "neighbors": ["URAL","SIBERIA","MONGOLIA","AFGHANISTAN","INDIA","SIAM"],        "mapX": 620, "mapY": 220 },
+        { "key": "MIDDLE_EAST", "name": "Middle East", "neighbors": ["UKRAINE","SOUTHERN_EUROPE","EGYPT","EAST_AFRICA","AFGHANISTAN","INDIA"], "mapX": 485, "mapY": 265 },
+        { "key": "INDIA",       "name": "India",       "neighbors": ["MIDDLE_EAST","AFGHANISTAN","CHINA","SIAM"],                     "mapX": 570, "mapY": 280 },
+        { "key": "SIAM",        "name": "Siam",        "neighbors": ["INDIA","CHINA","INDONESIA"],                                     "mapX": 630, "mapY": 310 }
+      ]
+    },
+    {
+      "key": "AUSTRALIA",
+      "name": "Australia",
+      "bonusArmies": 2,
+      "color": "#9370DB",
+      "territories": [
+        { "key": "INDONESIA",          "name": "Indonesia",          "neighbors": ["SIAM","NEW_GUINEA","WESTERN_AUSTRALIA"],         "mapX": 640, "mapY": 390 },
+        { "key": "NEW_GUINEA",         "name": "New Guinea",         "neighbors": ["INDONESIA","EASTERN_AUSTRALIA","WESTERN_AUSTRALIA"], "mapX": 720, "mapY": 380 },
+        { "key": "WESTERN_AUSTRALIA",  "name": "Western Australia",  "neighbors": ["INDONESIA","NEW_GUINEA","EASTERN_AUSTRALIA"],    "mapX": 665, "mapY": 470 },
+        { "key": "EASTERN_AUSTRALIA",  "name": "Eastern Australia",  "neighbors": ["NEW_GUINEA","WESTERN_AUSTRALIA"],                "mapX": 730, "mapY": 470 }
+      ]
+    }
+  ]
+}

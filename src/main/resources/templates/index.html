@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RiskAI - World Domination</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚔️</text></svg>">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <span class="text-danger fw-bold">RISK<span class="text-warning">AI</span></span> - World Domination
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-header bg-danger text-white">
+                        <h3 class="mb-0">🌍 Game Lobby</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-4">
+                            <h5>Available Games</h5>
+                            <a href="/create" class="btn btn-success">
+                                ➕ Create New Game
+                            </a>
+                        </div>
+
+                        <div id="loading" class="text-center py-4">
+                            <div class="spinner-border text-danger" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading games...</p>
+                        </div>
+
+                        <div id="no-games" class="text-center py-4 d-none">
+                            <p class="text-muted">No games available. Create one to get started!</p>
+                        </div>
+
+                        <div id="games-list" class="d-none">
+                            <!-- Games will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGames();
+            // Refresh every 5 seconds
+            setInterval(loadGames, 5000);
+        });
+
+        async function loadGames() {
+            try {
+                const response = await fetch('/api/games');
+                const games = await response.json();
+
+                const loading = document.getElementById('loading');
+                const noGames = document.getElementById('no-games');
+                const gamesList = document.getElementById('games-list');
+
+                loading.classList.add('d-none');
+
+                if (games.length === 0) {
+                    noGames.classList.remove('d-none');
+                    gamesList.classList.add('d-none');
+                } else {
+                    noGames.classList.add('d-none');
+                    gamesList.classList.remove('d-none');
+                    renderGames(games);
+                }
+            } catch (error) {
+                console.error('Error loading games:', error);
+            }
+        }
+
+        function renderGames(games) {
+            const gamesList = document.getElementById('games-list');
+            gamesList.innerHTML = games.map(game => {
+                const isFull = game.status === 'WAITING_FOR_PLAYERS' && game.playerCount >= game.maxPlayers;
+                const statusLabel = isFull ? 'FULL' : formatStatus(game.status);
+                const statusBadge = isFull ? 'bg-danger' : getStatusBadge(game.status);
+                return `
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title mb-1">${game.name}</h5>
+                                <p class="text-muted mb-0">
+                                    Host: ${game.hostName} | 
+                                    Players: ${game.playerCount}/${game.maxPlayers} |
+                                    Mode: <span class="badge bg-info">${game.gameMode === 'TURN_LIMIT' ? 'Turn Limit' : game.gameMode === 'DOMINATION' ? 'Domination' : 'Classic'}</span> |
+                                    Status: <span class="badge ${statusBadge}">${statusLabel}</span>
+                                </p>
+                            </div>
+                            <div class="d-flex gap-2">
+                                ${game.canJoin ? `<a href="/join/${game.id}" class="btn btn-primary">Join</a>` : ''}
+                                <a href="/game/${game.id}" class="btn btn-outline-secondary">Spectate</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function getStatusBadge(status) {
+            switch(status) {
+                case 'WAITING_FOR_PLAYERS': return 'bg-warning text-dark';
+                case 'IN_PROGRESS': return 'bg-success';
+                case 'FINISHED': return 'bg-secondary';
+                default: return 'bg-info';
+            }
+        }
+
+        function formatStatus(status) {
+            return status.replace(/_/g, ' ');
+        }
+    </script>
+</body>
+</html>
