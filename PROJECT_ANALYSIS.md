@@ -1,8 +1,9 @@
 # RiskAI Project — Architecture Review & Analysis
 
 > **Date:** February 2026  
+> **Last Updated:** February 19, 2026 (verified against `fix/bugs` branch)  
 > **Scope:** Full codebase review — structure, architecture, code quality, bugs, testing, and recommendations  
-> **Codebase:** 47 Java files, ~3,042 lines of Java (plus JS/HTML/CSS front-end)
+> **Codebase:** 47 Java files, ~3,200 lines of Java (plus JS/HTML/CSS front-end)
 
 ---
 
@@ -27,22 +28,25 @@
 
 The RiskAI project is a well-conceived Spring Boot 4.0 web-based board game with WebSocket real-time updates, CPU opponents via the Strategy pattern, and multiple game modes. The overall structure is logical and the code is readable.
 
-**However, there are several significant issues:**
+**The `fix/bugs` branch has resolved 5 of the 7 originally identified bugs** (infinite loop, race condition, army miscalculation, turn over-count, and sendError no-op). The remaining work is architectural and quality-focused.
+
+**Current status:**
 
 | Category | Severity | Count |
 |----------|----------|-------|
-| 🔴 Bugs / Logic Errors | Critical | 7 |
+| ✅ Fixed Bugs (on `fix/bugs`) | Resolved | 5 |
+| 🔴 Remaining Bugs | Low-Medium | 2 |
 | 🟠 Architecture Violations | High | 6 |
 | 🟡 Performance Problems | Medium | 8 |
 | 🔵 Code Quality Issues | Low | 10 |
-| ⚪ Test Coverage Gaps | Critical | ~90% untested |
+| ⚪ Test Coverage Gaps | Critical | ~92% untested |
 
-### Biggest Risks
-1. **`GameService` is a God Class** (609 lines, ~15 responsibilities)
-2. **Thread-safety issues** in async CPU execution with shared mutable state
-3. **N+1 query problems** throughout CPU strategies
-4. **Near-zero test coverage** — only 5 tests, all integration, no unit tests
-5. **Eliminated player skip logic** can infinite-loop if all players are eliminated
+### Biggest Remaining Risks
+1. **`GameService` is a God Class** (~639 lines, 22+ responsibilities)
+2. **N+1 query problems** throughout CPU strategies (50+ queries per CPU turn)
+3. **Near-zero test coverage** — only 5 tests, all integration, no unit tests
+4. **Security gaps** — no player identity validation, CSRF disabled, open CORS
+5. **`Thread.sleep()` blocks async thread pool** — can exhaust with 4+ concurrent games
 
 ---
 
@@ -136,7 +140,7 @@ com.risk/
 
 ## 4. Class-by-Class Analysis
 
-### 🔴 `GameService.java` (609 lines) — GOD CLASS
+### 🔴 `GameService.java` (~639 lines) — GOD CLASS
 
 This is the most critical issue. This single class handles:
 
@@ -175,41 +179,37 @@ This is the most critical issue. This single class handles:
 
 ---
 
-### 🟡 `CPUPlayerService.java` (189 lines)
+### 🟡 `CPUPlayerService.java` (~207 lines)
 
-- **Duplicated winner-lookup logic** — The "find winner name" pattern appears 3 times:
-  ```java
-  String winnerName = "Unknown";
-  for (Player p : game.getPlayers()) {
-      if (p.getId().equals(winnerId)) { ... }
-  }
-  ```
+- ✅ **Race condition fixed** — Now uses `ConcurrentHashMap<String, ReentrantLock>` with `tryLock()` per game ID. Concurrent CPU turn execution is properly guarded.
+
+- **Duplicated winner-lookup logic** — The "find winner name" pattern appears 2 times in this file (and 3 more across `GameWebSocketController`).
   Should be extracted to a helper method.
 
 - **`Thread.sleep()` in `@Async` methods** — Blocks the thread pool. Should use `ScheduledExecutorService` or reactive delays.
 
 - **No transaction boundary** — `@Async` methods run outside the caller's transaction. Each `gameService` call inside creates its own transaction, but the overall turn isn't atomic. A failed attack mid-turn leaves inconsistent state.
 
-- **Recursive CPU chaining** — `executeCPUTurn()` calls `checkAndTriggerCPUTurn()` at the end, which may call `executeCPUTurn()` again. With 5 consecutive CPU players, this creates deep call stacks. Should use a queue-based approach.
+- **Recursive CPU chaining** — `executeCPUTurn()` calls `checkAndTriggerCPUTurn()` at the end, which may call `executeCPUTurn()` again. With 5 consecutive CPU players, this creates deep call stacks. Note: the `ReentrantLock` means the same thread *can* re-acquire the lock, so this recursive pattern still works but creates deep stacks. Should use a queue-based approach.
 
 ---
 
-### 🟡 `GameWebSocketHandler.java` (204 lines)
+### 🟡 `GameWebSocketHandler.java` (~256 lines)
 
 - **Too many inner static classes** — `GameMessage`, `AttackResultMessage`, `CPUFortifyMessage`, `ChatMessage` should be standalone classes in a `dto.websocket` package.
 - **Circular dependency risk** — `GameWebSocketHandler` depends on `GameService`, and `CPUPlayerService` depends on both. In Spring Boot 4, circular beans are rejected by default.
 
 ---
 
-### 🟡 `GameWebSocketController.java` (232 lines)
+### 🟡 `GameWebSocketController.java` (~234 lines)
 
 - **Duplicated game-over check logic** — The same "check if game finished → broadcast game over" pattern is copy-pasted in `handleAttack()`, `handleFortify()`, and `handleSkipFortify()`.
-- **`sendError()` method is a no-op** — It just logs the warning but never sends the error back to the client via WebSocket. Players get no feedback on invalid actions.
+- ✅ **`sendError()` fixed** — Now calls `webSocketHandler.broadcastError()` which sends error messages to clients via STOMP.
 - **Inline message DTOs** — `ReinforceMessage`, `AttackMessage`, `FortifyMessage`, `PlayerIdMessage`, `ChatMessageRequest` are all inner classes. These should be extracted.
 
 ---
 
-### 🟡 `GameController.java` (224 lines)
+### 🟡 `GameController.java` (~247 lines)
 
 - **`@CrossOrigin(origins = "*")`** — Wide open CORS in production is dangerous.
 - **No pagination** on `getGames()` — Will become a problem as games accumulate.
@@ -241,7 +241,7 @@ Clean two-source map loading (classpath + external). No issues.
 
 ### ✅ Model Classes — Generally Good
 
-- `Game.java` (95 lines) — Well-structured entity with good helper methods.
+- `Game.java` (~106 lines) — Well-structured entity with good helper methods. ✅ `nextPlayer()` turn-counting bug fixed.
 - `Player.java` (68 lines) — Clean.
 - `Territory.java` — Clean.
 - `Continent.java` — Clean.
@@ -253,98 +253,39 @@ Clean two-source map loading (classpath + external). No issues.
 
 ## 5. Bugs & Potential Issues
 
-### 🔴 BUG 1: Infinite Loop in `endTurn()` — Eliminated Player Skip
+### ✅ ~~BUG 1: Infinite Loop in `endTurn()` — Eliminated Player Skip~~ **FIXED**
 
-```java
-// GameService.java, lines 432-435
-private void endTurn(Game game) {
-    do {
-        game.nextPlayer();
-    } while (game.getCurrentPlayer().isEliminated());
-    ...
-}
-```
-
-**Problem:** If all players are somehow eliminated (edge case with concurrent attacks), or if the data is corrupt, this loops forever. Also, `game.nextPlayer()` increments `turnNumber` each time `currentPlayerIndex` wraps to 0, so skipping eliminated players inflates the turn count.
-
-**Fix:** Add a circuit breaker:
-```java
-int attempts = 0;
-do {
-    game.nextPlayer();
-    attempts++;
-    if (attempts > game.getPlayers().size()) {
-        throw new IllegalStateException("No active players remaining");
-    }
-} while (game.getCurrentPlayer().isEliminated());
-```
+**Status:** Resolved on `fix/bugs` branch. A circuit breaker with `maxAttempts` guard and a `wrapped` boolean for turn-number tracking has been implemented. The turn number now only increments once per actual round, not per skipped player.
 
 ---
 
-### 🔴 BUG 2: Race Condition in CPU Turn Execution
+### ✅ ~~BUG 2: Race Condition in CPU Turn Execution~~ **FIXED**
 
-`CPUPlayerService.executeCPUTurn()` is `@Async`, but nothing prevents two threads from executing turns for the same game simultaneously. If a human action triggers `checkAndTriggerCPUTurn()` while a CPU turn is already running, both threads modify game state concurrently.
-
-**Fix:** Use a `ConcurrentHashMap<String, Lock>` per game ID, or use optimistic locking (`@Version`) on the `Game` entity.
+**Status:** Resolved on `fix/bugs` branch. `CPUPlayerService` now uses `ConcurrentHashMap<String, ReentrantLock>` with `tryLock()` per game ID. If a CPU turn is already running for a game, subsequent attempts return immediately. Locks are cleaned up when no threads are queued.
 
 ---
 
-### 🔴 BUG 3: Territory Ownership After Conquest — Army Miscalculation
+### ✅ ~~BUG 3: Territory Ownership After Conquest — Army Miscalculation~~ **FIXED**
 
-```java
-// GameService.java, executeAttack()
-if (conquered) {
-    to.setOwner(from.getOwner());
-    to.setArmies(attackingArmies);
-    from.setArmies(from.getArmies() - attackingArmies);
-    ...
-}
-```
-
-**Problem:** `from.getArmies()` was already reduced by `attackerLosses` earlier in the method. The second subtraction of `attackingArmies` double-counts. If attacker has 4 armies, attacks with 3, loses 1:
-- After losses: `from.armies = 4 - 1 = 3`
-- After conquest move: `from.armies = 3 - 3 = 0`
-- Territory is left with 0 armies, violating the "must have ≥ 1 army" rule.
-
-**Fix:** The move-after-conquest should be `from.setArmies(from.getArmies() - attackingArmies)` is technically correct in Risk rules (you move the attacking dice count into the conquered territory), but the remaining army check is missing. Need to ensure `from.armies >= 1` after the move.
+**Status:** Resolved on `fix/bugs` branch. The conquest code now uses `Math.min(attackingArmies, from.getArmies() - 1)` to ensure at least 1 army always remains on the source territory. An `IllegalStateException` is thrown if the constraint can't be satisfied.
 
 ---
 
-### 🔴 BUG 4: `nextPlayer()` Over-Counts Turns
+### ✅ ~~BUG 4: `nextPlayer()` Over-Counts Turns~~ **FIXED**
 
-```java
-// Game.java
-public void nextPlayer() {
-    currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
-    if (currentPlayerIndex == 0) {
-        turnNumber++;
-    }
-}
-```
-
-When called in the `endTurn()` loop to skip eliminated players, `turnNumber` increments every time the index wraps past 0. With 3 eliminated players out of 6, a single "next turn" could increment `turnNumber` multiple times.
-
-**Fix:** Separate "advance to next player" from "increment turn number". Only increment turn once per actual end-of-turn.
+**Status:** Resolved on `fix/bugs` branch. `nextPlayer()` now only advances the index (`currentPlayerIndex = (currentPlayerIndex + 1) % players.size()`). Turn number tracking has been moved to `endTurn()` which uses a `wrapped` boolean flag to increment the turn count exactly once per actual round.
 
 ---
 
-### 🔴 BUG 5: `getGameState()` Potentially Returns Stale Territory Data
+### � CODE SMELL: `getGameState()` Redundant Territory Loading
 
-In `GameStateDTO.fromGame()`, territories are loaded from `game.getTerritories()` (a lazy `Set`), but `getGameState()` then re-queries them. The `fromGame()` method builds territories from the entity's collection (which may be stale), but then `getGameState()` overwrites `dto.setTerritories(...)` with fresh data. This is correct but wasteful — `fromGame()` does unnecessary work that gets thrown away.
+`GameStateDTO.fromGame()` builds territory/player data from the entity's lazy collections, but `getGameState()` then overwrites this with freshly queried data. The initial work in `fromGame()` is wasted. Not a correctness bug — the fresh data is always used — but it's unnecessary computation. Consider refactoring `fromGame()` to accept pre-loaded collections.
 
 ---
 
-### 🟠 BUG 6: `sendError()` in WebSocket Controller is a No-Op
+### ✅ ~~BUG 6: `sendError()` in WebSocket Controller is a No-Op~~ **FIXED**
 
-```java
-private void sendError(String gameId, String playerId, String error) {
-    log.warn("Error in game {}: {}", gameId, error);
-}
-```
-
-The method logs but never sends the error to the client. Players performing invalid actions get no feedback.
-
-**Fix:** Use `SimpMessagingTemplate.convertAndSendToUser()` to send error messages to the specific player's queue.
+**Status:** Resolved on `fix/bugs` branch. `sendError()` now calls `webSocketHandler.broadcastError(gameId, playerId, error)` which sends a `GameMessage.error()` payload to the game's STOMP topic at `/topic/game/{gameId}`.
 
 ---
 
@@ -482,10 +423,10 @@ H2 is in-memory, but for production PostgreSQL, there's no HikariCP tuning.
 ### Phase 1 — Critical Fixes (Week 1)
 
 1. **Split `GameService` into focused services** (see class analysis above)
-2. **Fix the infinite loop bug** in `endTurn()` eliminated player skip
-3. **Fix the turn counter** over-increment in `nextPlayer()`
+2. ~~**Fix the infinite loop bug** in `endTurn()` eliminated player skip~~ ✅ Done
+3. ~~**Fix the turn counter** over-increment in `nextPlayer()`~~ ✅ Done
 4. **Add optimistic locking** (`@Version` field on `Game` entity) to prevent concurrent modification
-5. **Implement `sendError()`** in WebSocket controller to actually send errors to clients
+5. ~~**Implement `sendError()`** in WebSocket controller to actually send errors to clients~~ ✅ Done
 
 ### Phase 2 — Architecture Improvements (Week 2)
 
@@ -600,15 +541,15 @@ test/java/com/risk/
 
 ## 12. Priority Action Items
 
-### 🔴 Immediate (Blocking Issues)
+### ✅ Immediate (Blocking Issues) — ALL RESOLVED
 
-| # | Action | Files |
-|---|--------|-------|
-| 1 | Fix infinite loop in `endTurn()` eliminated player skip | `GameService.java` |
-| 2 | Fix turn counter over-increment in `nextPlayer()` | `Game.java` |
-| 3 | Fix possible 0-army territory after conquest | `GameService.java` |
-| 4 | Add concurrency control for CPU turns | `CPUPlayerService.java` |
-| 5 | Implement actual error sending in `sendError()` | `GameWebSocketController.java` |
+| # | Action | Files | Status |
+|---|--------|-------|--------|
+| 1 | Fix infinite loop in `endTurn()` eliminated player skip | `GameService.java` | ✅ Fixed |
+| 2 | Fix turn counter over-increment in `nextPlayer()` | `Game.java` | ✅ Fixed |
+| 3 | Fix possible 0-army territory after conquest | `GameService.java` | ✅ Fixed |
+| 4 | Add concurrency control for CPU turns | `CPUPlayerService.java` | ✅ Fixed |
+| 5 | Implement actual error sending in `sendError()` | `GameWebSocketController.java` | ✅ Fixed |
 
 ### 🟠 Short-Term (Next Sprint)
 
@@ -641,15 +582,15 @@ test/java/com/risk/
 
 | File | Lines | Status |
 |------|-------|--------|
-| `GameService.java` | 609 | 🔴 God Class — split required |
-| `GameController.java` | 224 | 🟡 Needs param → body refactoring |
-| `GameWebSocketController.java` | 232 | 🟡 Duplicated logic, inline DTOs |
-| `GameWebSocketHandler.java` | 204 | 🟡 Inner classes should be extracted |
-| `CPUPlayerService.java` | 189 | 🟡 Thread safety issues |
-| `HardCPUStrategy.java` | 166 | ✅ Acceptable |
-| `MediumCPUStrategy.java` | 118 | ✅ Acceptable |
-| `MapLoader.java` | 125 | ✅ Clean |
-| `Game.java` | 95 | 🟡 `nextPlayer()` bug |
+| `GameService.java` | ~639 | 🔴 God Class — split required |
+| `GameWebSocketHandler.java` | ~256 | 🟡 Inner classes should be extracted |
+| `GameController.java` | ~247 | 🟡 Needs param → body refactoring |
+| `GameWebSocketController.java` | ~234 | 🟡 Duplicated logic, inline DTOs |
+| `CPUPlayerService.java` | ~207 | 🟡 Concurrency fixed, Thread.sleep remains |
+| `HardCPUStrategy.java` | ~166 | ✅ Acceptable |
+| `MapLoader.java` | ~125 | ✅ Clean |
+| `MediumCPUStrategy.java` | ~118 | ✅ Acceptable |
+| `Game.java` | ~106 | ✅ `nextPlayer()` bug fixed |
 | All other files | < 80 each | ✅ Acceptable |
 
 ---
