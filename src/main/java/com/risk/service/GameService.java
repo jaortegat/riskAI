@@ -400,8 +400,9 @@ public class GameService {
 
     /**
      * Fortify - move armies between territories.
+     * @return the updated game (which may be FINISHED if turn limit reached)
      */
-    public void fortify(String gameId, String playerId, String fromKey, String toKey, int armies) {
+    public Game fortify(String gameId, String playerId, String fromKey, String toKey, int armies) {
         Game game = getGame(gameId);
         validateCurrentPlayer(game, playerId);
 
@@ -435,6 +436,7 @@ public class GameService {
         territoryRepository.save(to);
 
         endTurn(game);
+        return game;
     }
 
     /**
@@ -475,6 +477,7 @@ public class GameService {
 
         // Check turn limit before starting next turn
         if (checkTurnLimit(game)) {
+            // Game ended, status is now FINISHED
             return;
         }
 
