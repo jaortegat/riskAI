@@ -111,6 +111,15 @@ public class GameWebSocketHandler {
     }
 
     /**
+     * Broadcast an error message to all players (clients can filter by playerId).
+     */
+    public void broadcastError(String gameId, String playerId, String error) {
+        GameErrorMessage msg = new GameErrorMessage(playerId, error);
+        messagingTemplate.convertAndSend("/topic/game/" + gameId,
+                GameMessage.error(msg));
+    }
+
+    /**
      * Broadcast chat message.
      */
     public void broadcastChatMessage(String gameId, String playerName, String message) {
@@ -193,6 +202,14 @@ public class GameWebSocketHandler {
                     .timestamp(System.currentTimeMillis())
                     .build();
         }
+
+        public static GameMessage error(GameErrorMessage error) {
+            return GameMessage.builder()
+                    .type("ERROR")
+                    .payload(error)
+                    .timestamp(System.currentTimeMillis())
+                    .build();
+        }
     }
 
     @Data
@@ -226,5 +243,13 @@ public class GameWebSocketHandler {
     public static class ChatMessage {
         private String playerName;
         private String message;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class GameErrorMessage {
+        private String playerId;
+        private String error;
     }
 }

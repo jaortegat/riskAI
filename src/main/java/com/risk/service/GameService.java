@@ -162,7 +162,7 @@ public class GameService {
     }
 
     private void distributeTerritories(Game game) {
-        List<Territory> territories = new ArrayList<>(game.getTerritories());
+        List<Territory> territories = new ArrayList<>(territoryRepository.findByGameId(game.getId()));
         Collections.shuffle(territories);
 
         List<Player> players = game.getPlayers();
@@ -182,6 +182,14 @@ public class GameService {
             List<Territory> playerTerritories = territoryRepository.findByOwnerId(player.getId());
             int armiesPlaced = playerTerritories.size();
             int remaining = initialArmies - armiesPlaced;
+
+            if (remaining <= 0) {
+                continue;
+            }
+
+            if (playerTerritories.isEmpty()) {
+                throw new IllegalStateException("No territories assigned to player " + player.getName());
+            }
 
             Random random = new Random();
             for (int i = 0; i < remaining; i++) {
@@ -326,8 +334,12 @@ public class GameService {
         if (conquered) {
             Player previousOwner = to.getOwner();
             to.setOwner(from.getOwner());
-            to.setArmies(attackingArmies);
-            from.setArmies(from.getArmies() - attackingArmies);
+            int moveArmies = Math.min(attackingArmies, from.getArmies() - 1);
+            if (moveArmies < 1) {
+                throw new IllegalStateException("Not enough armies to occupy conquered territory");
+            }
+            to.setArmies(moveArmies);
+            from.setArmies(from.getArmies() - moveArmies);
 
             // Check if player was eliminated
             if (territoryRepository.findByOwnerId(previousOwner.getId()).isEmpty()) {
@@ -442,9 +454,24 @@ public class GameService {
 
     private void endTurn(Game game) {
         // Move to next active player
+        int attempts = 0;
+        int maxAttempts = game.getPlayers().size();
+        boolean wrapped = false;
         do {
+            int previousIndex = game.getCurrentPlayerIndex();
             game.nextPlayer();
+            attempts++;
+            if (game.getCurrentPlayerIndex() <= previousIndex) {
+                wrapped = true;
+            }
+            if (attempts > maxAttempts) {
+                throw new IllegalStateException("No active players remaining");
+            }
         } while (game.getCurrentPlayer().isEliminated());
+
+        if (wrapped) {
+            game.setTurnNumber(game.getTurnNumber() + 1);
+        }
 
         // Check turn limit before starting next turn
         if (checkTurnLimit(game)) {

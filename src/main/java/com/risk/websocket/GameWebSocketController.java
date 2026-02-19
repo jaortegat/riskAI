@@ -182,6 +182,7 @@ public class GameWebSocketController {
     private void sendError(String gameId, String playerId, String error) {
         // Send error to specific player
         log.warn("Error in game {}: {}", gameId, error);
+        webSocketHandler.broadcastError(gameId, playerId, error);
     }
 
     // Message DTOs

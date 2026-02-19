@@ -106,9 +106,6 @@ public class Game {
 
     public void nextPlayer() {
         currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
-        if (currentPlayerIndex == 0) {
-            turnNumber++;
-        }
     }
 
     public boolean canStart() {

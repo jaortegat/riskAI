@@ -9,6 +9,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
+
 /**
  * Service for executing CPU player turns.
  */
@@ -21,6 +24,8 @@ public class CPUPlayerService {
     private final CPUStrategyFactory strategyFactory;
     private final GameWebSocketHandler webSocketHandler;
 
+    private final ConcurrentHashMap<String, ReentrantLock> gameLocks = new ConcurrentHashMap<>();
+
     @Value("${game.cpu.think-delay-ms:1000}")
     private long thinkDelayMs;
 
@@ -29,6 +34,11 @@ public class CPUPlayerService {
      */
     @Async
     public void executeCPUTurn(String gameId, String playerId) {
+        ReentrantLock lock = gameLocks.computeIfAbsent(gameId, id -> new ReentrantLock());
+        if (!lock.tryLock()) {
+            log.info("CPU turn already running for game {}", gameId);
+            return;
+        }
         try {
             Game game = gameService.getGame(gameId);
             Player cpuPlayer = game.getCurrentPlayer();
@@ -89,6 +99,11 @@ public class CPUPlayerService {
 
         } catch (Exception e) {
             log.error("Error executing CPU turn for game {} player {}", gameId, playerId, e);
+        } finally {
+            lock.unlock();
+            if (!lock.hasQueuedThreads()) {
+                gameLocks.remove(gameId, lock);
+            }
         }
     }
 
