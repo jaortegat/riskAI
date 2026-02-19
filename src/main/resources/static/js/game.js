@@ -23,6 +23,7 @@ class RiskAIGame {
         this.pendingLogEntries = [];
         this.bypassLogBuffer = false;
         this.ownAttackTimeout = null;
+        this.lastReinforcementLogEntry = null;
         
         this.init();
     }
@@ -87,6 +88,11 @@ class RiskAIGame {
                 this.gameState = message.payload;
                 this.updateUI();
                 this.renderMap();
+                break;
+            case 'ERROR':
+                if (message.payload?.playerId === this.playerId) {
+                    this.showNotification(message.payload?.error || 'Action failed', 'danger');
+                }
                 break;
                 
             case 'ATTACK_RESULT':
@@ -595,7 +601,7 @@ class RiskAIGame {
         const tKey = this.selectedTerritory.territoryKey;
         
         // Log immediately — WebSocket GAME_UPDATE may arrive before HTTP response
-        this.logReinforcement(this.playerName, tName, amount);
+        const logEntry = this.logReinforcement(this.playerName, tName, amount);
         
         try {
             const response = await fetch(`/api/games/${this.gameId}/reinforce?` + new URLSearchParams({
@@ -606,11 +612,19 @@ class RiskAIGame {
             
             if (!response.ok) {
                 const body = await response.json().catch(() => null);
+                // Remove the log entry since the action failed
+                if (logEntry && logEntry.parentNode) {
+                    logEntry.parentNode.removeChild(logEntry);
+                }
                 this.showNotification(body?.error || 'Cannot place armies here', 'danger');
                 return;
             }
             this.clearSelection();
         } catch (error) {
+            // Remove the log entry since the action failed
+            if (logEntry && logEntry.parentNode) {
+                logEntry.parentNode.removeChild(logEntry);
+            }
             this.showNotification('Connection error while placing armies', 'danger');
         }
     }
@@ -936,9 +950,11 @@ class RiskAIGame {
     
     /**
      * Log a reinforcement action.
+     * Returns the log entry DOM element for potential removal on error.
      */
     logReinforcement(playerName, territoryName, armies) {
-        this.addLogEntry(`${playerName} placed ${armies} army on ${territoryName}`, 'reinforce');
+        const text = `${playerName} placed ${armies} army on ${territoryName}`;
+        return this.addLogEntry(text, 'reinforce');
     }
     
     /**
@@ -965,21 +981,23 @@ class RiskAIGame {
     /**
      * Add an entry to the game log.
      * Buffers entries while attack queue is processing (unless bypassed).
+     * Returns the DOM element if added directly, null if buffered.
      */
     addLogEntry(text, type = 'phase', isHeader = false) {
         if (this.processingAttackQueue && !this.bypassLogBuffer) {
             this.pendingLogEntries.push({ text, type, isHeader, seq: this.messageSeq });
-            return;
+            return null;
         }
-        this.appendLogEntry(text, type, isHeader);
+        return this.appendLogEntry(text, type, isHeader);
     }
     
     /**
      * Append a log entry directly to the DOM.
+     * Returns the created DOM element.
      */
     appendLogEntry(text, type = 'phase', isHeader = false) {
         const logDiv = document.getElementById('game-log');
-        if (!logDiv) return;
+        if (!logDiv) return null;
         
         const entry = document.createElement('div');
         if (isHeader) {
@@ -997,6 +1015,8 @@ class RiskAIGame {
         while (logDiv.children.length > 100) {
             logDiv.removeChild(logDiv.firstChild);
         }
+        
+        return entry;
     }
     
     /**

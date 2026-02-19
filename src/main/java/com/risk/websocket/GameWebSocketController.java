@@ -113,13 +113,12 @@ public class GameWebSocketController {
                 message.getArmies(), gameId);
 
         try {
-            gameService.fortify(gameId, message.getPlayerId(),
+            Game game = gameService.fortify(gameId, message.getPlayerId(),
                     message.getFromTerritoryKey(), message.getToTerritoryKey(),
                     message.getArmies());
             webSocketHandler.broadcastGameUpdate(gameId);
 
             // Check if game ended (e.g. turn-limit reached)
-            Game game = gameService.getGame(gameId);
             if (game.getStatus() == GameStatus.FINISHED) {
                 webSocketHandler.broadcastGameOver(gameId,
                         game.getPlayers().stream()
@@ -147,11 +146,10 @@ public class GameWebSocketController {
         log.debug("Skip fortify request in game {}", gameId);
 
         try {
-            gameService.skipFortify(gameId, message.getPlayerId());
+            Game game = gameService.skipFortify(gameId, message.getPlayerId());
             webSocketHandler.broadcastGameUpdate(gameId);
 
             // Check if game ended (e.g. turn-limit reached)
-            Game game = gameService.getGame(gameId);
             if (game.getStatus() == GameStatus.FINISHED) {
                 webSocketHandler.broadcastGameOver(gameId,
                         game.getPlayers().stream()
@@ -182,6 +180,7 @@ public class GameWebSocketController {
     private void sendError(String gameId, String playerId, String error) {
         // Send error to specific player
         log.warn("Error in game {}: {}", gameId, error);
+        webSocketHandler.broadcastError(gameId, playerId, error);
     }
 
     // Message DTOs
