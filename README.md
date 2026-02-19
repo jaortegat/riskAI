@@ -95,66 +95,6 @@ mvn test
    - Move armies between connected territories you own
    - Or skip to end your turn
 
-## 📁 Project Structure
-
-```
-src/main/java/com/risk/
-├── RiskAIGameApplication.java       # Main application entry point
-├── config/                          # Spring configuration
-│   ├── AsyncConfig.java             # Async execution config
-│   ├── MapLoader.java               # Built-in & custom map loader
-│   ├── MapDefinition.java           # Map definition model
-│   ├── AreaDefinition.java          # Area/continent definition
-│   ├── TerritoryDefinition.java     # Territory definition
-│   ├── SecurityConfig.java          # Security settings
-│   └── WebSocketConfig.java         # WebSocket setup
-├── controller/                      # REST controllers
-│   ├── GameController.java          # Game API endpoints
-│   └── WebController.java           # Web page controllers
-├── cpu/                             # CPU player strategies
-│   ├── CPUStrategy.java             # Strategy interface
-│   ├── CPUAction.java               # CPU action model
-│   ├── CPUStrategyFactory.java      # Factory for strategy selection
-│   ├── EasyCPUStrategy.java         # Random/simple CPU
-│   ├── MediumCPUStrategy.java       # Balanced CPU
-│   └── HardCPUStrategy.java         # Strategic CPU
-├── dto/                             # Data Transfer Objects
-│   ├── CreateGameRequest.java       # Game creation request
-│   ├── JoinGameRequest.java         # Game join request
-│   ├── GameStateDTO.java            # Full game state
-│   ├── GameSummaryDTO.java          # Lobby game summary
-│   ├── GameActionDTO.java           # Game action
-│   ├── PlayerDTO.java               # Player info
-│   ├── TerritoryDTO.java            # Territory info
-│   ├── ContinentDTO.java            # Continent info
-│   └── MapInfoDTO.java              # Available map info
-├── exception/                       # Exception handlers
-│   └── GlobalExceptionHandler.java  # REST error handling
-├── model/                           # JPA entities & enums
-│   ├── Game.java                    # Game entity
-│   ├── Player.java                  # Player entity
-│   ├── Territory.java               # Territory entity
-│   ├── Continent.java               # Continent entity
-│   ├── GameMode.java                # Classic / Domination / Turn Limit
-│   ├── GamePhase.java               # Reinforcement / Attack / Fortify
-│   ├── GameStatus.java              # Waiting / In Progress / Finished
-│   ├── PlayerType.java              # Human / CPU
-│   ├── PlayerColor.java             # Player colors enum
-│   └── CPUDifficulty.java           # Easy / Medium / Hard
-├── repository/                      # JPA repositories
-│   ├── GameRepository.java
-│   ├── PlayerRepository.java
-│   ├── TerritoryRepository.java
-│   └── ContinentRepository.java
-├── service/                         # Business logic
-│   ├── GameService.java             # Core game logic
-│   ├── MapService.java              # Map initialization
-│   └── CPUPlayerService.java        # CPU turn execution
-└── websocket/                       # WebSocket handlers
-    ├── GameWebSocketController.java # STOMP message handlers
-    └── GameWebSocketHandler.java    # Broadcast utilities
-```
-
 ## 🔧 Configuration
 
 ### Application Properties
@@ -169,18 +109,6 @@ game:
   cpu:
     think-delay-ms: 3000      # CPU decision delay (ms)
     default-difficulty: MEDIUM
-```
-
-### Database
-
-By default, the application uses H2 in-memory database. For production, configure PostgreSQL:
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/riskdb
-    username: your_username
-    password: your_password
 ```
 
 ## 🔌 API Endpoints
