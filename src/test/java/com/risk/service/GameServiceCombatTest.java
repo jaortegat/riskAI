@@ -1,25 +1,45 @@
 package com.risk.service;
 
-import com.risk.model.*;
-import com.risk.repository.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
-import java.util.*;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import com.risk.dto.AttackResult;
+import com.risk.model.Game;
+import com.risk.model.GameMode;
+import com.risk.model.GamePhase;
+import com.risk.model.GameStatus;
+import com.risk.model.Player;
+import com.risk.model.PlayerColor;
+import com.risk.model.PlayerType;
+import com.risk.model.Territory;
+import com.risk.repository.ContinentRepository;
+import com.risk.repository.GameRepository;
+import com.risk.repository.PlayerRepository;
+import com.risk.repository.TerritoryRepository;
 
 /**
- * Unit tests for GameService attack/combat logic.
+ * Unit tests for CombatService attack/combat logic.
  * Covers BUG 3 regression (army miscalculation after conquest).
  */
 @ExtendWith(MockitoExtension.class)
@@ -29,10 +49,10 @@ class GameServiceCombatTest {
     @Mock private PlayerRepository playerRepository;
     @Mock private TerritoryRepository territoryRepository;
     @Mock private ContinentRepository continentRepository;
-    @Mock private MapService mapService;
 
-    @InjectMocks
-    private GameService gameService;
+    private GameQueryService gameQueryService;
+    private WinConditionService winConditionService;
+    private CombatService combatService;
 
     private Game game;
     private Player attacker;
@@ -42,6 +62,10 @@ class GameServiceCombatTest {
 
     @BeforeEach
     void setUp() {
+        gameQueryService = new GameQueryService(gameRepository, territoryRepository, continentRepository);
+        winConditionService = new WinConditionService(gameRepository, playerRepository, territoryRepository);
+        combatService = new CombatService(gameRepository, territoryRepository, playerRepository, gameQueryService, winConditionService);
+
         attacker = Player.builder()
                 .id("attacker-1")
                 .name("Attacker")
@@ -107,7 +131,7 @@ class GameServiceCombatTest {
             when(gameRepository.findById("game-1")).thenReturn(Optional.of(game));
 
             assertThrows(IllegalStateException.class,
-                    () -> gameService.attack("game-1", "attacker-1", "alaska", "kamchatka", 2));
+                    () -> combatService.attack("game-1", "attacker-1", "alaska", "kamchatka", 2));
         }
 
         @Test
@@ -116,7 +140,7 @@ class GameServiceCombatTest {
             when(gameRepository.findById("game-1")).thenReturn(Optional.of(game));
 
             assertThrows(IllegalStateException.class,
-                    () -> gameService.attack("game-1", "defender-1", "alaska", "kamchatka", 2));
+                    () -> combatService.attack("game-1", "defender-1", "alaska", "kamchatka", 2));
         }
 
         @Test
@@ -130,7 +154,7 @@ class GameServiceCombatTest {
                     .thenReturn(Optional.of(toTerritory));
 
             assertThrows(IllegalArgumentException.class,
-                    () -> gameService.attack("game-1", "attacker-1", "alaska", "kamchatka", 2));
+                    () -> combatService.attack("game-1", "attacker-1", "alaska", "kamchatka", 2));
         }
 
         @Test
@@ -144,7 +168,7 @@ class GameServiceCombatTest {
                     .thenReturn(Optional.of(toTerritory));
 
             assertThrows(IllegalArgumentException.class,
-                    () -> gameService.attack("game-1", "attacker-1", "alaska", "kamchatka", 2));
+                    () -> combatService.attack("game-1", "attacker-1", "alaska", "kamchatka", 2));
         }
 
         @Test
@@ -159,7 +183,7 @@ class GameServiceCombatTest {
 
             // Attacking with 3 armies when source has 3 — must fail (need at least 1 behind)
             assertThrows(IllegalArgumentException.class,
-                    () -> gameService.attack("game-1", "attacker-1", "alaska", "kamchatka", 3));
+                    () -> combatService.attack("game-1", "attacker-1", "alaska", "kamchatka", 3));
         }
 
         @Test
@@ -172,7 +196,7 @@ class GameServiceCombatTest {
                     .thenReturn(Optional.of(toTerritory));
 
             assertThrows(IllegalArgumentException.class,
-                    () -> gameService.attack("game-1", "attacker-1", "alaska", "kamchatka", 0));
+                    () -> combatService.attack("game-1", "attacker-1", "alaska", "kamchatka", 0));
         }
 
         @Test
@@ -186,7 +210,7 @@ class GameServiceCombatTest {
                     .thenReturn(Optional.of(toTerritory));
 
             assertThrows(IllegalArgumentException.class,
-                    () -> gameService.attack("game-1", "attacker-1", "alaska", "kamchatka", 4));
+                    () -> combatService.attack("game-1", "attacker-1", "alaska", "kamchatka", 4));
         }
     }
 
@@ -222,7 +246,7 @@ class GameServiceCombatTest {
                 toTerritory.setOwner(defender);
 
                 try {
-                    GameService.AttackResult result = gameService.attack(
+                    AttackResult result = combatService.attack(
                             "game-1", "attacker-1", "alaska", "kamchatka", 1);
 
                     if (result.isConquered()) {
@@ -272,7 +296,7 @@ class GameServiceCombatTest {
                 toTerritory.setArmies(1);
                 toTerritory.setOwner(defender);
 
-                GameService.AttackResult result = gameService.attack(
+                AttackResult result = combatService.attack(
                         "game-1", "attacker-1", "alaska", "kamchatka", 3);
 
                 if (result.isConquered()) {
@@ -305,7 +329,7 @@ class GameServiceCombatTest {
             when(territoryRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
             when(gameRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            GameService.AttackResult result = gameService.attack(
+            AttackResult result = combatService.attack(
                     "game-1", "attacker-1", "alaska", "kamchatka", 3);
 
             // Check dice counts
@@ -356,7 +380,7 @@ class GameServiceCombatTest {
                 toTerritory.setOwner(defender);
                 defender.setEliminated(false);
 
-                GameService.AttackResult result = gameService.attack(
+                AttackResult result = combatService.attack(
                         "game-1", "attacker-1", "alaska", "kamchatka", 3);
 
                 if (result.isConquered()) {

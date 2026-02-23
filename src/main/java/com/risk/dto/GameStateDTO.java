@@ -1,9 +1,14 @@
 package com.risk.dto;
 
-import com.risk.model.*;
-import lombok.*;
+import com.risk.model.Game;
+import com.risk.model.GamePhase;
+import com.risk.model.GameStatus;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
 
 /**
  * DTO for game state representation.

@@ -1,9 +1,15 @@
 package com.risk.websocket;
 
 import com.risk.cpu.CPUAction;
-import com.risk.dto.*;
+import com.risk.dto.AttackResult;
+import com.risk.dto.GameStateDTO;
+import com.risk.dto.PlayerDTO;
 import com.risk.service.GameService;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
@@ -16,6 +22,8 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class GameWebSocketHandler {
 
+    private static final String TOPIC_PREFIX = "/topic/game/";
+
     private final SimpMessagingTemplate messagingTemplate;
     private final GameService gameService;
 
@@ -25,10 +33,10 @@ public class GameWebSocketHandler {
     public void broadcastGameUpdate(String gameId) {
         try {
             GameStateDTO gameState = gameService.getGameState(gameId);
-            messagingTemplate.convertAndSend("/topic/game/" + gameId, 
+            messagingTemplate.convertAndSend(TOPIC_PREFIX + gameId, 
                     GameMessage.gameUpdate(gameState));
             log.debug("Broadcast game update for game {}", gameId);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error broadcasting game update for game {}", gameId, e);
         }
     }
@@ -36,14 +44,14 @@ public class GameWebSocketHandler {
     /**
      * Broadcast attack result to all players.
      */
-    public void broadcastAttackResult(String gameId, CPUAction action, GameService.AttackResult result) {
+    public void broadcastAttackResult(String gameId, CPUAction action, AttackResult result) {
         broadcastAttackResult(gameId, action.getFromTerritoryKey(), action.getToTerritoryKey(), result);
     }
 
     /**
      * Broadcast attack result to all players (used for both human and CPU attacks).
      */
-    public void broadcastAttackResult(String gameId, String fromTerritoryKey, String toTerritoryKey, GameService.AttackResult result) {
+    public void broadcastAttackResult(String gameId, String fromTerritoryKey, String toTerritoryKey, AttackResult result) {
         AttackResultMessage message = AttackResultMessage.builder()
                 .fromTerritory(fromTerritoryKey)
                 .toTerritory(toTerritoryKey)
@@ -55,7 +63,7 @@ public class GameWebSocketHandler {
                 .eliminatedPlayer(result.getEliminatedPlayer())
                 .build();
 
-        messagingTemplate.convertAndSend("/topic/game/" + gameId,
+        messagingTemplate.convertAndSend(TOPIC_PREFIX + gameId,
                 GameMessage.attackResult(message));
     }
 
@@ -65,7 +73,7 @@ public class GameWebSocketHandler {
     public void broadcastCPUFortify(String gameId, String playerName,
                                      String fromName, String toName, int armies) {
         CPUFortifyMessage msg = new CPUFortifyMessage(playerName, fromName, toName, armies);
-        messagingTemplate.convertAndSend("/topic/game/" + gameId,
+        messagingTemplate.convertAndSend(TOPIC_PREFIX + gameId,
                 GameMessage.cpuFortify(msg));
     }
 
@@ -73,7 +81,7 @@ public class GameWebSocketHandler {
      * Broadcast CPU turn end notification.
      */
     public void broadcastCPUTurnEnd(String gameId, String playerName) {
-        messagingTemplate.convertAndSend("/topic/game/" + gameId,
+        messagingTemplate.convertAndSend(TOPIC_PREFIX + gameId,
                 GameMessage.cpuTurnEnd(playerName));
     }
 
@@ -81,7 +89,7 @@ public class GameWebSocketHandler {
      * Broadcast player joined notification.
      */
     public void broadcastPlayerJoined(String gameId, PlayerDTO player) {
-        messagingTemplate.convertAndSend("/topic/game/" + gameId,
+        messagingTemplate.convertAndSend(TOPIC_PREFIX + gameId,
                 GameMessage.playerJoined(player));
     }
 
@@ -89,7 +97,7 @@ public class GameWebSocketHandler {
      * Broadcast player left notification.
      */
     public void broadcastPlayerLeft(String gameId, String playerName) {
-        messagingTemplate.convertAndSend("/topic/game/" + gameId,
+        messagingTemplate.convertAndSend(TOPIC_PREFIX + gameId,
                 GameMessage.playerLeft(playerName));
     }
 
@@ -98,7 +106,7 @@ public class GameWebSocketHandler {
      */
     public void broadcastGameStarted(String gameId) {
         GameStateDTO gameState = gameService.getGameState(gameId);
-        messagingTemplate.convertAndSend("/topic/game/" + gameId,
+        messagingTemplate.convertAndSend(TOPIC_PREFIX + gameId,
                 GameMessage.gameStarted(gameState));
     }
 
@@ -106,7 +114,7 @@ public class GameWebSocketHandler {
      * Broadcast game over notification.
      */
     public void broadcastGameOver(String gameId, String winnerName) {
-        messagingTemplate.convertAndSend("/topic/game/" + gameId,
+        messagingTemplate.convertAndSend(TOPIC_PREFIX + gameId,
                 GameMessage.gameOver(winnerName));
     }
 
@@ -115,7 +123,7 @@ public class GameWebSocketHandler {
      */
     public void broadcastError(String gameId, String playerId, String error) {
         GameErrorMessage msg = new GameErrorMessage(playerId, error);
-        messagingTemplate.convertAndSend("/topic/game/" + gameId,
+        messagingTemplate.convertAndSend(TOPIC_PREFIX + gameId,
                 GameMessage.error(msg));
     }
 
@@ -124,7 +132,7 @@ public class GameWebSocketHandler {
      */
     public void broadcastChatMessage(String gameId, String playerName, String message) {
         ChatMessage chat = new ChatMessage(playerName, message);
-        messagingTemplate.convertAndSend("/topic/game/" + gameId + "/chat", chat);
+        messagingTemplate.convertAndSend(TOPIC_PREFIX + gameId + "/chat", chat);
     }
 
     /**

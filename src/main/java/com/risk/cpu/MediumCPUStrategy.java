@@ -1,13 +1,20 @@
 package com.risk.cpu;
 
-import com.risk.model.*;
+import com.risk.model.CPUDifficulty;
+import com.risk.model.Game;
+import com.risk.model.Player;
+import com.risk.model.Territory;
 import com.risk.repository.TerritoryRepository;
 import com.risk.repository.ContinentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 /**
  * Medium CPU Strategy - Makes somewhat strategic decisions.

@@ -1,7 +1,8 @@
 package com.risk.cpu;
 
-import com.risk.model.*;
-import java.util.List;
+import com.risk.model.CPUDifficulty;
+import com.risk.model.Game;
+import com.risk.model.Player;
 
 /**
  * Strategy interface for CPU players.

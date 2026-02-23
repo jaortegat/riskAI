@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -157,6 +158,200 @@ class GameTest {
         void shouldReturnFalseWhenBelow() {
             game.setMaxPlayers(6);
             assertFalse(game.isFull());
+        }
+
+        @Test
+        @DisplayName("should return true when exceeding max players")
+        void shouldReturnTrueWhenExceedingMax() {
+            game.setMaxPlayers(2); // 4 players > 2 max
+            assertTrue(game.isFull());
+        }
+    }
+
+    @Nested
+    @DisplayName("prePersist()")
+    class PrePersistTests {
+
+        @Test
+        @DisplayName("should set defaults when fields are null")
+        void shouldSetDefaultsWhenNull() {
+            Game newGame = new Game();
+            newGame.prePersist();
+
+            assertNotNull(newGame.getCreatedAt(), "createdAt should be set");
+            assertEquals(GameStatus.WAITING_FOR_PLAYERS, newGame.getStatus());
+            assertEquals(GamePhase.SETUP, newGame.getCurrentPhase());
+        }
+
+        @Test
+        @DisplayName("should not overwrite createdAt if already set")
+        void shouldNotOverwriteCreatedAt() {
+            Game newGame = new Game();
+            LocalDateTime fixedTime = LocalDateTime.of(2025, 1, 1, 12, 0);
+            newGame.setCreatedAt(fixedTime);
+            newGame.prePersist();
+
+            assertEquals(fixedTime, newGame.getCreatedAt(),
+                    "prePersist should not overwrite existing createdAt");
+        }
+
+        @Test
+        @DisplayName("should not overwrite status if already set")
+        void shouldNotOverwriteStatus() {
+            Game newGame = new Game();
+            newGame.setStatus(GameStatus.IN_PROGRESS);
+            newGame.prePersist();
+
+            assertEquals(GameStatus.IN_PROGRESS, newGame.getStatus(),
+                    "prePersist should not overwrite existing status");
+        }
+
+        @Test
+        @DisplayName("should not overwrite currentPhase if already set")
+        void shouldNotOverwriteCurrentPhase() {
+            Game newGame = new Game();
+            newGame.setCurrentPhase(GamePhase.ATTACK);
+            newGame.prePersist();
+
+            assertEquals(GamePhase.ATTACK, newGame.getCurrentPhase(),
+                    "prePersist should not overwrite existing currentPhase");
+        }
+
+        @Test
+        @DisplayName("should preserve all pre-existing values")
+        void shouldPreserveAllPreExistingValues() {
+            Game newGame = new Game();
+            LocalDateTime fixedTime = LocalDateTime.of(2025, 6, 15, 10, 30);
+            newGame.setCreatedAt(fixedTime);
+            newGame.setStatus(GameStatus.FINISHED);
+            newGame.setCurrentPhase(GamePhase.FORTIFY);
+            newGame.prePersist();
+
+            assertEquals(fixedTime, newGame.getCreatedAt());
+            assertEquals(GameStatus.FINISHED, newGame.getStatus());
+            assertEquals(GamePhase.FORTIFY, newGame.getCurrentPhase());
+        }
+    }
+
+    @Nested
+    @DisplayName("Builder defaults")
+    class BuilderDefaultTests {
+
+        @Test
+        @DisplayName("should use default gameMode CLASSIC")
+        void shouldDefaultToClassicMode() {
+            Game built = Game.builder()
+                    .id("g1").name("Test").mapId("m")
+                    .status(GameStatus.WAITING_FOR_PLAYERS)
+                    .currentPhase(GamePhase.SETUP)
+                    .maxPlayers(6).minPlayers(2)
+                    .build();
+
+            assertEquals(GameMode.CLASSIC, built.getGameMode());
+        }
+
+        @Test
+        @DisplayName("should use default dominationPercent 70")
+        void shouldDefaultDominationPercent() {
+            Game built = Game.builder()
+                    .id("g1").name("Test").mapId("m")
+                    .status(GameStatus.WAITING_FOR_PLAYERS)
+                    .currentPhase(GamePhase.SETUP)
+                    .maxPlayers(6).minPlayers(2)
+                    .build();
+
+            assertEquals(70, built.getDominationPercent());
+        }
+
+        @Test
+        @DisplayName("should use default turnLimit 20")
+        void shouldDefaultTurnLimit() {
+            Game built = Game.builder()
+                    .id("g1").name("Test").mapId("m")
+                    .status(GameStatus.WAITING_FOR_PLAYERS)
+                    .currentPhase(GamePhase.SETUP)
+                    .maxPlayers(6).minPlayers(2)
+                    .build();
+
+            assertEquals(20, built.getTurnLimit());
+        }
+
+        @Test
+        @DisplayName("should initialize empty players list")
+        void shouldInitializeEmptyPlayersList() {
+            Game built = Game.builder()
+                    .id("g1").name("Test").mapId("m")
+                    .status(GameStatus.WAITING_FOR_PLAYERS)
+                    .currentPhase(GamePhase.SETUP)
+                    .maxPlayers(6).minPlayers(2)
+                    .build();
+
+            assertNotNull(built.getPlayers());
+            assertTrue(built.getPlayers().isEmpty());
+        }
+
+        @Test
+        @DisplayName("should initialize empty territories set")
+        void shouldInitializeEmptyTerritoriesSet() {
+            Game built = Game.builder()
+                    .id("g1").name("Test").mapId("m")
+                    .status(GameStatus.WAITING_FOR_PLAYERS)
+                    .currentPhase(GamePhase.SETUP)
+                    .maxPlayers(6).minPlayers(2)
+                    .build();
+
+            assertNotNull(built.getTerritories());
+            assertTrue(built.getTerritories().isEmpty());
+        }
+    }
+
+    @Nested
+    @DisplayName("canStart() edge cases")
+    class CanStartEdgeCases {
+
+        @Test
+        @DisplayName("should return false when FINISHED")
+        void shouldReturnFalseWhenFinished() {
+            game.setStatus(GameStatus.FINISHED);
+            assertFalse(game.canStart());
+        }
+
+        @Test
+        @DisplayName("should return true with exactly minPlayers")
+        void shouldReturnTrueAtExactlyMinPlayers() {
+            game.setStatus(GameStatus.WAITING_FOR_PLAYERS);
+            game.setMinPlayers(4); // exactly 4 players in setup
+            assertTrue(game.canStart());
+        }
+    }
+
+    @Nested
+    @DisplayName("nextPlayer() edge cases")
+    class NextPlayerEdgeCases {
+
+        @Test
+        @DisplayName("should work with single player")
+        void shouldWorkWithSinglePlayer() {
+            game.setPlayers(new ArrayList<>(List.of(players.get(0))));
+            game.setCurrentPlayerIndex(0);
+
+            game.nextPlayer();
+
+            assertEquals(0, game.getCurrentPlayerIndex(),
+                    "With single player, index should wrap back to 0");
+        }
+
+        @Test
+        @DisplayName("should work with two players")
+        void shouldWorkWithTwoPlayers() {
+            game.setPlayers(new ArrayList<>(List.of(players.get(0), players.get(1))));
+            game.setCurrentPlayerIndex(0);
+
+            game.nextPlayer();
+            assertEquals(1, game.getCurrentPlayerIndex());
+
+            game.nextPlayer();
+            assertEquals(0, game.getCurrentPlayerIndex());
         }
     }
 }
