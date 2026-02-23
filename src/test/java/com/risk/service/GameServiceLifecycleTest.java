@@ -585,6 +585,8 @@ class GameServiceLifecycleTest {
 
             assertTrue(winConditionService.checkTurnLimit(game));
             assertEquals(GameStatus.FINISHED, game.getStatus());
+            assertEquals(5, game.getTurnNumber(),
+                    "Turn number should be reset to the limit");
             assertEquals("p1", game.getWinnerId(), "Player with most territories should win");
         }
 

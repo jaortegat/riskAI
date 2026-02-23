@@ -282,6 +282,8 @@ class GameServiceTurnTest {
 
             assertEquals(GameStatus.FINISHED, result.getStatus());
             assertEquals(GamePhase.GAME_OVER, result.getCurrentPhase());
+            assertEquals(5, result.getTurnNumber(),
+                    "Turn number should stay at the limit, not exceed it");
             assertEquals("player-2", result.getWinnerId(),
                     "Player with most territories should win");
         }

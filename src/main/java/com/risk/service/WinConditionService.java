@@ -62,6 +62,8 @@ public class WinConditionService {
     public boolean checkTurnLimit(Game game) {
         if (game.getGameMode() != GameMode.TURN_LIMIT) return false;
         if (game.getTurnNumber() > game.getTurnLimit()) {
+            // Reset turn number to the limit (this turn never actually started)
+            game.setTurnNumber(game.getTurnLimit());
             // Find player with most territories
             List<Player> activePlayers = playerRepository.findActivePlayersByGameId(game.getId());
             Player winner = null;

@@ -417,6 +417,24 @@ class GameControllerTest {
             verify(webSocketHandler).broadcastGameUpdate("game-1");
             verify(cpuPlayerService).checkAndTriggerCPUTurn("game-1");
         }
+
+        @Test
+        @DisplayName("should broadcast game over and NOT trigger CPU when game is finished")
+        void shouldBroadcastGameOverWhenFinished() {
+            GameStateDTO gameState = new GameStateDTO();
+            gameState.setGameId("game-1");
+            gameState.setStatus(GameStatus.FINISHED);
+            gameState.setWinnerName("Player 1");
+
+            when(gameService.getGameState("game-1")).thenReturn(gameState);
+
+            ResponseEntity<GameStateDTO> response = controller.fortify(
+                    "game-1", "player-1", "brazil", "argentina", 2);
+
+            assertEquals(200, response.getStatusCode().value());
+            verify(webSocketHandler).broadcastGameOver("game-1", "Player 1");
+            verify(cpuPlayerService, never()).checkAndTriggerCPUTurn(any());
+        }
     }
 
     @Nested
@@ -437,6 +455,23 @@ class GameControllerTest {
             verify(gameService).skipFortify("game-1", "player-1");
             verify(webSocketHandler).broadcastGameUpdate("game-1");
             verify(cpuPlayerService).checkAndTriggerCPUTurn("game-1");
+        }
+
+        @Test
+        @DisplayName("should broadcast game over and NOT trigger CPU when game is finished")
+        void shouldBroadcastGameOverWhenFinished() {
+            GameStateDTO gameState = new GameStateDTO();
+            gameState.setGameId("game-1");
+            gameState.setStatus(GameStatus.FINISHED);
+            gameState.setWinnerName("Player 1");
+
+            when(gameService.getGameState("game-1")).thenReturn(gameState);
+
+            ResponseEntity<GameStateDTO> response = controller.skipFortify("game-1", "player-1");
+
+            assertEquals(200, response.getStatusCode().value());
+            verify(webSocketHandler).broadcastGameOver("game-1", "Player 1");
+            verify(cpuPlayerService, never()).checkAndTriggerCPUTurn(any());
         }
     }
 

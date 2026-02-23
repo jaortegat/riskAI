@@ -463,6 +463,10 @@ class RiskAIGame {
         document.getElementById('turn-number').textContent = this.gameState.turnNumber;
         document.getElementById('current-phase').textContent = this.formatEnum(this.gameState.currentPhase);
 
+        // Hide turn info when game is finished
+        const turnInfo = document.getElementById('turn-info');
+        if (turnInfo) turnInfo.classList.toggle('d-none', this.gameState.status === 'FINISHED');
+
         // Update game mode display
         const modeInfo = document.getElementById('mode-info');
         const sidebarModeInfo = document.getElementById('sidebar-mode-info');

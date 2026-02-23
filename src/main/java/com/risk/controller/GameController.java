@@ -210,9 +210,14 @@ public class GameController {
         gameService.fortify(gameId, playerId, fromTerritoryKey, toTerritoryKey, armies);
         GameStateDTO state = gameService.getGameState(gameId);
         webSocketHandler.broadcastGameUpdate(gameId);
-        
-        // Check if CPU turn should start
-        cpuPlayerService.checkAndTriggerCPUTurn(gameId);
+
+        // Check if game ended (e.g. turn-limit reached)
+        if (state.getStatus() == GameStatus.FINISHED) {
+            webSocketHandler.broadcastGameOver(gameId, state.getWinnerName());
+        } else {
+            // Check if CPU turn should start
+            cpuPlayerService.checkAndTriggerCPUTurn(gameId);
+        }
         
         return ResponseEntity.ok(state);
     }
@@ -224,12 +229,18 @@ public class GameController {
     public ResponseEntity<GameStateDTO> skipFortify(@PathVariable String gameId,
                                                      @RequestParam String playerId) {
         gameService.skipFortify(gameId, playerId);
+        GameStateDTO state = gameService.getGameState(gameId);
         webSocketHandler.broadcastGameUpdate(gameId);
+
+        // Check if game ended (e.g. turn-limit reached)
+        if (state.getStatus() == GameStatus.FINISHED) {
+            webSocketHandler.broadcastGameOver(gameId, state.getWinnerName());
+        } else {
+            // Check if CPU turn should start
+            cpuPlayerService.checkAndTriggerCPUTurn(gameId);
+        }
         
-        // Check if CPU turn should start
-        cpuPlayerService.checkAndTriggerCPUTurn(gameId);
-        
-        return ResponseEntity.ok(gameService.getGameState(gameId));
+        return ResponseEntity.ok(state);
     }
 
     private GameSummaryDTO toGameSummary(Game game) {
