@@ -32,8 +32,7 @@ class WebControllerTest {
     @Test
     @DisplayName("GET / should return index view")
     void homeShouldReturnIndexView() {
-        Model model = new ConcurrentModel();
-        String view = controller.home(model);
+        String view = controller.home();
         assertEquals("index", view);
     }
 

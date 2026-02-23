@@ -20,7 +20,7 @@ public class WebController {
      * Home page - game lobby.
      */
     @GetMapping("/")
-    public String home(Model model) {
+    public String home() {
         return "index";
     }
 

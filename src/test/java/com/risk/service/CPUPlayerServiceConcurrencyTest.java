@@ -1,9 +1,20 @@
 package com.risk.service;
 
-import com.risk.cpu.CPUStrategy;
-import com.risk.cpu.CPUStrategyFactory;
-import com.risk.model.*;
-import com.risk.websocket.GameWebSocketHandler;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -13,15 +24,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.mockito.AdditionalMatchers.*;
+import com.risk.cpu.CPUStrategy;
+import com.risk.cpu.CPUStrategyFactory;
+import com.risk.model.CPUDifficulty;
+import com.risk.model.Game;
+import com.risk.model.GameMode;
+import com.risk.model.GamePhase;
+import com.risk.model.GameStatus;
+import com.risk.model.Player;
+import com.risk.model.PlayerColor;
+import com.risk.model.PlayerType;
+import com.risk.websocket.GameWebSocketHandler;
 
 /**
  * Unit tests for CPUPlayerService concurrency control.

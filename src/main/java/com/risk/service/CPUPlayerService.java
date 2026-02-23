@@ -1,7 +1,14 @@
 package com.risk.service;
 
-import com.risk.cpu.*;
-import com.risk.model.*;
+import com.risk.cpu.CPUAction;
+import com.risk.cpu.CPUStrategy;
+import com.risk.cpu.CPUStrategyFactory;
+import com.risk.dto.AttackResult;
+import com.risk.model.Game;
+import com.risk.model.GamePhase;
+import com.risk.model.GameStatus;
+import com.risk.model.Player;
+import com.risk.model.Territory;
 import com.risk.websocket.GameWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +26,8 @@ import java.util.concurrent.locks.ReentrantLock;
 @RequiredArgsConstructor
 @Slf4j
 public class CPUPlayerService {
+
+    private static final String UNKNOWN_PLAYER = "Unknown";
 
     private final GameService gameService;
     private final CPUStrategyFactory strategyFactory;
@@ -71,15 +80,7 @@ public class CPUPlayerService {
             // Check if game ended during endTurn (turn limit reached)
             game = gameService.getGame(gameId);
             if (game.getStatus() == GameStatus.FINISHED) {
-                String winnerId = game.getWinnerId();
-                String winnerName = "Unknown";
-                for (Player p : game.getPlayers()) {
-                    if (p.getId().equals(winnerId)) {
-                        winnerName = p.getName();
-                        break;
-                    }
-                }
-                webSocketHandler.broadcastGameOver(game.getId(), winnerName);
+                webSocketHandler.broadcastGameOver(game.getId(), getWinnerName(game));
                 log.info("Game {} ended (turn limit) during {}'s turn", game.getName(), cpuPlayer.getName());
                 return;
             }
@@ -97,7 +98,10 @@ public class CPUPlayerService {
                 checkAndTriggerCPUTurn(gameId);
             }
 
-        } catch (Exception e) {
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            log.warn("CPU turn interrupted for game {} player {}", gameId, playerId);
+        } catch (RuntimeException e) {
             log.error("Error executing CPU turn for game {} player {}", gameId, playerId, e);
         } finally {
             lock.unlock();
@@ -152,7 +156,7 @@ public class CPUPlayerService {
 
             if (action.getType() == CPUAction.ActionType.ATTACK) {
                 try {
-                    GameService.AttackResult result = gameService.attack(
+                    AttackResult result = gameService.attack(
                             game.getId(), cpuPlayer.getId(),
                             action.getFromTerritoryKey(), action.getToTerritoryKey(),
                             action.getArmies());
@@ -165,18 +169,10 @@ public class CPUPlayerService {
                     // Check if game is over after this attack
                     game = gameService.getGame(game.getId());
                     if (game.getStatus() == GameStatus.FINISHED) {
-                        String winnerId = game.getWinnerId();
-                        String winnerName = "Unknown";
-                        for (Player p : game.getPlayers()) {
-                            if (p.getId().equals(winnerId)) {
-                                winnerName = p.getName();
-                                break;
-                            }
-                        }
-                        webSocketHandler.broadcastGameOver(game.getId(), winnerName);
+                        webSocketHandler.broadcastGameOver(game.getId(), getWinnerName(game));
                         return;
                     }
-                } catch (Exception e) {
+                } catch (RuntimeException e) {
                     log.debug("CPU attack failed: {}", e.getMessage());
                     break;
                 }
@@ -228,6 +224,15 @@ public class CPUPlayerService {
         webSocketHandler.broadcastGameUpdate(game.getId());
     }
 
+    private String getWinnerName(Game game) {
+        String winnerId = game.getWinnerId();
+        return game.getPlayers().stream()
+                .filter(p -> p.getId().equals(winnerId))
+                .findFirst()
+                .map(Player::getName)
+                .orElse(UNKNOWN_PLAYER);
+    }
+
     /**
      * Check if the current player is a CPU and trigger their turn.
      */
@@ -240,7 +245,7 @@ public class CPUPlayerService {
                 game.getStatus() == GameStatus.IN_PROGRESS) {
                 executeCPUTurn(gameId, currentPlayer.getId());
             }
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error checking CPU turn for game {}", gameId, e);
         }
     }

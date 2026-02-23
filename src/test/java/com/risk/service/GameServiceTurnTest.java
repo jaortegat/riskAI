@@ -7,7 +7,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -18,7 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * Unit tests for GameService turn management logic.
+ * Unit tests for turn management, fortification, and win condition logic.
  * Covers BUG 1 regression (infinite loop in endTurn)
  * and BUG 4 regression (turn number correctness).
  */
@@ -29,16 +28,24 @@ class GameServiceTurnTest {
     @Mock private PlayerRepository playerRepository;
     @Mock private TerritoryRepository territoryRepository;
     @Mock private ContinentRepository continentRepository;
-    @Mock private MapService mapService;
 
-    @InjectMocks
-    private GameService gameService;
+    private GameQueryService gameQueryService;
+    private WinConditionService winConditionService;
+    private ReinforcementService reinforcementService;
+    private TurnManagementService turnManagementService;
+    private FortificationService fortificationService;
 
     private Game game;
     private List<Player> players;
 
     @BeforeEach
     void setUp() {
+        gameQueryService = new GameQueryService(gameRepository, territoryRepository, continentRepository);
+        winConditionService = new WinConditionService(gameRepository, playerRepository, territoryRepository);
+        reinforcementService = new ReinforcementService(gameRepository, territoryRepository, continentRepository, gameQueryService);
+        turnManagementService = new TurnManagementService(gameRepository, gameQueryService, winConditionService, reinforcementService);
+        fortificationService = new FortificationService(gameRepository, territoryRepository, gameQueryService, turnManagementService);
+
         players = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             Player p = Player.builder()
@@ -84,7 +91,7 @@ class GameServiceTurnTest {
             when(gameRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
             when(continentRepository.findByGameIdWithTerritories("game-1")).thenReturn(List.of());
 
-            Game result = gameService.skipFortify("game-1", "player-0");
+            Game result = fortificationService.skipFortify("game-1", "player-0");
 
             assertEquals(1, result.getCurrentPlayerIndex());
             assertEquals(GamePhase.REINFORCEMENT, result.getCurrentPhase());
@@ -96,7 +103,7 @@ class GameServiceTurnTest {
             when(gameRepository.findById("game-1")).thenReturn(Optional.of(game));
 
             assertThrows(IllegalStateException.class,
-                    () -> gameService.skipFortify("game-1", "player-2"));
+                    () -> fortificationService.skipFortify("game-1", "player-2"));
         }
 
         @Test
@@ -106,7 +113,7 @@ class GameServiceTurnTest {
             when(gameRepository.findById("game-1")).thenReturn(Optional.of(game));
 
             assertThrows(IllegalStateException.class,
-                    () -> gameService.skipFortify("game-1", "player-0"));
+                    () -> fortificationService.skipFortify("game-1", "player-0"));
         }
     }
 
@@ -124,7 +131,7 @@ class GameServiceTurnTest {
             when(gameRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
             when(continentRepository.findByGameIdWithTerritories("game-1")).thenReturn(List.of());
 
-            Game result = gameService.skipFortify("game-1", "player-0");
+            Game result = fortificationService.skipFortify("game-1", "player-0");
 
             assertEquals(2, result.getCurrentPlayerIndex(), "Should skip eliminated player 1");
             assertFalse(result.getCurrentPlayer().isEliminated());
@@ -141,7 +148,7 @@ class GameServiceTurnTest {
             when(gameRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
             when(continentRepository.findByGameIdWithTerritories("game-1")).thenReturn(List.of());
 
-            Game result = gameService.skipFortify("game-1", "player-0");
+            Game result = fortificationService.skipFortify("game-1", "player-0");
 
             assertEquals(3, result.getCurrentPlayerIndex(), "Should skip to player 3");
         }
@@ -161,7 +168,7 @@ class GameServiceTurnTest {
             when(gameRepository.findById("game-1")).thenReturn(Optional.of(game));
 
             assertThrows(IllegalStateException.class,
-                    () -> gameService.skipFortify("game-1", "player-0"),
+                    () -> fortificationService.skipFortify("game-1", "player-0"),
                     "BUG 1 regression: should throw instead of infinite looping");
         }
 
@@ -178,7 +185,7 @@ class GameServiceTurnTest {
             when(gameRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
             when(continentRepository.findByGameIdWithTerritories("game-1")).thenReturn(List.of());
 
-            Game result = gameService.skipFortify("game-1", "player-3");
+            Game result = fortificationService.skipFortify("game-1", "player-3");
 
             assertEquals(2, result.getCurrentPlayerIndex(), "Should wrap and skip to player 2");
         }
@@ -199,7 +206,7 @@ class GameServiceTurnTest {
             when(gameRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
             when(continentRepository.findByGameIdWithTerritories("game-1")).thenReturn(List.of());
 
-            Game result = gameService.skipFortify("game-1", "player-3");
+            Game result = fortificationService.skipFortify("game-1", "player-3");
 
             assertEquals(0, result.getCurrentPlayerIndex());
             assertEquals(2, result.getTurnNumber(),
@@ -216,7 +223,7 @@ class GameServiceTurnTest {
             when(gameRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
             when(continentRepository.findByGameIdWithTerritories("game-1")).thenReturn(List.of());
 
-            Game result = gameService.skipFortify("game-1", "player-0");
+            Game result = fortificationService.skipFortify("game-1", "player-0");
 
             assertEquals(1, result.getCurrentPlayerIndex());
             assertEquals(5, result.getTurnNumber(),
@@ -238,7 +245,7 @@ class GameServiceTurnTest {
             when(gameRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
             when(continentRepository.findByGameIdWithTerritories("game-1")).thenReturn(List.of());
 
-            Game result = gameService.skipFortify("game-1", "player-3");
+            Game result = fortificationService.skipFortify("game-1", "player-3");
 
             assertEquals(2, result.getCurrentPlayerIndex());
             assertEquals(2, result.getTurnNumber(),
@@ -271,10 +278,12 @@ class GameServiceTurnTest {
                             Territory.builder().id("t3").build()));
             when(territoryRepository.findByOwnerId("player-3")).thenReturn(List.of());
 
-            Game result = gameService.skipFortify("game-1", "player-3");
+            Game result = fortificationService.skipFortify("game-1", "player-3");
 
             assertEquals(GameStatus.FINISHED, result.getStatus());
             assertEquals(GamePhase.GAME_OVER, result.getCurrentPhase());
+            assertEquals(5, result.getTurnNumber(),
+                    "Turn number should stay at the limit, not exceed it");
             assertEquals("player-2", result.getWinnerId(),
                     "Player with most territories should win");
         }
@@ -292,7 +301,7 @@ class GameServiceTurnTest {
             p.setTerritories(List.of()); // 0 territories
             when(continentRepository.findByGameIdWithTerritories("game-1")).thenReturn(List.of());
 
-            int result = gameService.calculateReinforcements(p);
+            int result = reinforcementService.calculateReinforcements(p);
             assertEquals(3, result, "Minimum reinforcements should be 3");
         }
 
@@ -308,14 +317,14 @@ class GameServiceTurnTest {
             p.setTerritories(territories);
             when(continentRepository.findByGameIdWithTerritories("game-1")).thenReturn(List.of());
 
-            int result = gameService.calculateReinforcements(p);
+            int result = reinforcementService.calculateReinforcements(p);
             assertEquals(4, result, "12 territories / 3 = 4");
         }
 
         @Test
         @DisplayName("should return 0 for null player")
         void shouldReturnZeroForNull() {
-            assertEquals(0, gameService.calculateReinforcements(null));
+            assertEquals(0, reinforcementService.calculateReinforcements(null));
         }
     }
 }

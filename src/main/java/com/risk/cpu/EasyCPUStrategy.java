@@ -1,11 +1,15 @@
 package com.risk.cpu;
 
-import com.risk.model.*;
+import com.risk.model.CPUDifficulty;
+import com.risk.model.Game;
+import com.risk.model.Player;
+import com.risk.model.Territory;
 import com.risk.repository.TerritoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
+import java.util.List;
+import java.util.Random;
 
 /**
  * Easy CPU Strategy - Makes random decisions.

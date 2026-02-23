@@ -1,11 +1,10 @@
 package com.risk.cpu;
 
-import com.risk.model.*;
+import com.risk.model.CPUDifficulty;
+import com.risk.model.Player;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.util.*;
 
 /**
  * Factory for creating CPU strategies based on difficulty level.

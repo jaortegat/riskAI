@@ -1,13 +1,17 @@
 package com.risk.cpu;
 
-import com.risk.model.*;
+import com.risk.model.CPUDifficulty;
+import com.risk.model.Continent;
+import com.risk.model.Game;
+import com.risk.model.Player;
+import com.risk.model.Territory;
 import com.risk.repository.TerritoryRepository;
 import com.risk.repository.ContinentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * Hard CPU Strategy - Makes strategic decisions focused on continent control.

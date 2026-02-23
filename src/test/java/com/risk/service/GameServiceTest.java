@@ -19,9 +19,6 @@ class GameServiceTest {
     private GameService gameService;
 
     @Autowired
-    private GameRepository gameRepository;
-
-    @Autowired
     private TerritoryRepository territoryRepository;
 
     private Game testGame;

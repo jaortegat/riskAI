@@ -1,7 +1,13 @@
 package com.risk.dto;
 
-import com.risk.model.*;
-import lombok.*;
+import com.risk.model.CPUDifficulty;
+import com.risk.model.Player;
+import com.risk.model.PlayerColor;
+import com.risk.model.PlayerType;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * DTO for player representation.

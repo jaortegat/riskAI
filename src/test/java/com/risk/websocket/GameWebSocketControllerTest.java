@@ -1,6 +1,7 @@
 package com.risk.websocket;
 
 import com.risk.cpu.CPUAction;
+import com.risk.dto.*;
 import com.risk.model.*;
 import com.risk.service.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,7 +64,7 @@ class GameWebSocketControllerTest {
         void shouldReinforceAndBroadcast() {
             var msg = new GameWebSocketController.ReinforceMessage("player-1", "brazil", 3);
 
-            controller.handleReinforce("game-1", msg, null);
+            controller.handleReinforce("game-1", msg);
 
             verify(gameService).placeArmies("game-1", "player-1", "brazil", 3);
             verify(webSocketHandler).broadcastGameUpdate("game-1");
@@ -77,7 +78,7 @@ class GameWebSocketControllerTest {
             doThrow(new IllegalStateException("Not your turn"))
                     .when(gameService).placeArmies(any(), any(), any(), anyInt());
 
-            controller.handleReinforce("game-1", msg, null);
+            controller.handleReinforce("game-1", msg);
 
             verify(webSocketHandler).broadcastError("game-1", "player-1", "Not your turn");
         }
@@ -91,7 +92,7 @@ class GameWebSocketControllerTest {
         @DisplayName("should call attack, broadcast result and update")
         void shouldAttackAndBroadcast() {
             var msg = new GameWebSocketController.AttackMessage("player-1", "alaska", "kamchatka", 2);
-            GameService.AttackResult result = GameService.AttackResult.builder()
+            AttackResult result = AttackResult.builder()
                     .attackerDice(new int[]{6, 5}).defenderDice(new int[]{3})
                     .attackerLosses(0).defenderLosses(1).conquered(false).build();
 
@@ -99,7 +100,7 @@ class GameWebSocketControllerTest {
                     .thenReturn(result);
             when(gameService.getGame("game-1")).thenReturn(game);
 
-            controller.handleAttack("game-1", msg, null);
+            controller.handleAttack("game-1", msg);
 
             verify(webSocketHandler).broadcastAttackResult(eq("game-1"), any(CPUAction.class), eq(result));
             verify(webSocketHandler).broadcastGameUpdate("game-1");
@@ -109,7 +110,7 @@ class GameWebSocketControllerTest {
         @DisplayName("should broadcast game over when game is finished after attack")
         void shouldBroadcastGameOverAfterConquest() {
             var msg = new GameWebSocketController.AttackMessage("player-1", "alaska", "kamchatka", 2);
-            GameService.AttackResult result = GameService.AttackResult.builder()
+            AttackResult result = AttackResult.builder()
                     .attackerDice(new int[]{6}).defenderDice(new int[]{1})
                     .attackerLosses(0).defenderLosses(1).conquered(true).build();
 
@@ -120,7 +121,7 @@ class GameWebSocketControllerTest {
                     .thenReturn(result);
             when(gameService.getGame("game-1")).thenReturn(game);
 
-            controller.handleAttack("game-1", msg, null);
+            controller.handleAttack("game-1", msg);
 
             verify(webSocketHandler).broadcastGameOver("game-1", "Alice");
         }
@@ -132,7 +133,7 @@ class GameWebSocketControllerTest {
             when(gameService.attack(any(), any(), any(), any(), anyInt()))
                     .thenThrow(new IllegalArgumentException("Not adjacent"));
 
-            controller.handleAttack("game-1", msg, null);
+            controller.handleAttack("game-1", msg);
 
             verify(webSocketHandler).broadcastError("game-1", "player-1", "Not adjacent");
         }
@@ -151,6 +152,18 @@ class GameWebSocketControllerTest {
 
             verify(gameService).endAttackPhase("game-1", "player-1");
             verify(webSocketHandler).broadcastGameUpdate("game-1");
+        }
+
+        @Test
+        @DisplayName("should broadcast error on exception")
+        void shouldBroadcastErrorOnEndAttackFailure() {
+            var msg = new GameWebSocketController.PlayerIdMessage("player-1");
+            doThrow(new RuntimeException("phase error"))
+                    .when(gameService).endAttackPhase("game-1", "player-1");
+
+            controller.handleEndAttack("game-1", msg);
+
+            verify(webSocketHandler).broadcastError("game-1", "player-1", "phase error");
         }
     }
 
@@ -186,6 +199,18 @@ class GameWebSocketControllerTest {
             verify(webSocketHandler).broadcastGameOver("game-1", "Alice");
             verify(cpuPlayerService, never()).checkAndTriggerCPUTurn(any());
         }
+
+        @Test
+        @DisplayName("should broadcast error on fortify exception")
+        void shouldBroadcastErrorOnFortifyFailure() {
+            var msg = new GameWebSocketController.FortifyMessage("player-1", "brazil", "argentina", 2);
+            when(gameService.fortify("game-1", "player-1", "brazil", "argentina", 2))
+                    .thenThrow(new RuntimeException("Not adjacent"));
+
+            controller.handleFortify("game-1", msg);
+
+            verify(webSocketHandler).broadcastError("game-1", "player-1", "Not adjacent");
+        }
     }
 
     @Nested
@@ -216,6 +241,18 @@ class GameWebSocketControllerTest {
             controller.handleSkipFortify("game-1", msg);
 
             verify(webSocketHandler).broadcastGameOver("game-1", "Alice");
+        }
+
+        @Test
+        @DisplayName("should broadcast error on skip fortify exception")
+        void shouldBroadcastErrorOnSkipFortifyFailure() {
+            var msg = new GameWebSocketController.PlayerIdMessage("player-1");
+            when(gameService.skipFortify("game-1", "player-1"))
+                    .thenThrow(new RuntimeException("Not your turn"));
+
+            controller.handleSkipFortify("game-1", msg);
+
+            verify(webSocketHandler).broadcastError("game-1", "player-1", "Not your turn");
         }
     }
 

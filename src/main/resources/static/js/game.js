@@ -463,6 +463,10 @@ class RiskAIGame {
         document.getElementById('turn-number').textContent = this.gameState.turnNumber;
         document.getElementById('current-phase').textContent = this.formatEnum(this.gameState.currentPhase);
 
+        // Hide turn info when game is finished
+        const turnInfo = document.getElementById('turn-info');
+        if (turnInfo) turnInfo.classList.toggle('d-none', this.gameState.status === 'FINISHED');
+
         // Update game mode display
         const modeInfo = document.getElementById('mode-info');
         const sidebarModeInfo = document.getElementById('sidebar-mode-info');
@@ -530,6 +534,21 @@ class RiskAIGame {
         // Hide all panels first
         document.querySelectorAll('.action-section').forEach(el => el.classList.add('d-none'));
         document.getElementById('waiting-room').classList.add('d-none');
+
+        // Toggle leaderboard vs action panel
+        const leaderboard = document.getElementById('leaderboard-panel');
+        const actionPanel = document.getElementById('action-panel');
+        if (status === 'FINISHED') {
+            if (actionPanel) actionPanel.classList.add('d-none');
+            if (leaderboard) {
+                leaderboard.classList.remove('d-none');
+                this.renderLeaderboard();
+            }
+            return;
+        } else {
+            if (leaderboard) leaderboard.classList.add('d-none');
+            if (actionPanel) actionPanel.classList.remove('d-none');
+        }
         
         if (status === 'WAITING_FOR_PLAYERS') {
             document.getElementById('waiting-room').classList.remove('d-none');
@@ -1071,6 +1090,59 @@ class RiskAIGame {
         }
     }
     
+    renderLeaderboard() {
+        if (!this.gameState?.players) return;
+
+        const winnerName = this.gameState.winnerName
+            || this.gameState.players.find(p => p.id === this.gameState.winnerId)?.name;
+
+        // Winner header
+        const winnerEl = document.getElementById('leaderboard-winner');
+        if (winnerEl && winnerName) {
+            winnerEl.textContent = `${winnerName} wins!`;
+        }
+
+        // Mode info
+        const modeInfoEl = document.getElementById('leaderboard-mode-info');
+        if (modeInfoEl) {
+            const mode = this.gameState.gameMode;
+            if (mode === 'DOMINATION') {
+                modeInfoEl.textContent = `Dominated ${this.gameState.dominationPercent}% of the map`;
+            } else if (mode === 'TURN_LIMIT') {
+                modeInfoEl.textContent = `Turn limit reached (${this.gameState.turnLimit} turns)`;
+            } else {
+                modeInfoEl.textContent = 'World conquest';
+            }
+        }
+
+        // Build ranked list
+        const container = document.getElementById('leaderboard-list');
+        if (!container) return;
+
+        const sorted = [...this.gameState.players].sort((a, b) => b.territoryCount - a.territoryCount);
+        const rankLabels = ['👑', '🥈', '🥉'];
+
+        container.innerHTML = sorted.map((p, i) => {
+            const isWinner = p.name === winnerName;
+            const rank = i < 3 ? rankLabels[i] : `${i + 1}`;
+            return `
+                <div class="leaderboard-entry ${isWinner ? 'winner' : ''} ${p.eliminated ? 'eliminated' : ''}" 
+                     style="border-left-color: ${isWinner ? '#ffd700' : p.colorHex}">
+                    <span class="leaderboard-rank">${rank}</span>
+                    <div class="leaderboard-player-info">
+                        <div class="leaderboard-player-name" style="color: ${p.colorHex}">
+                            ${p.type === 'CPU' ? '🤖' : '👤'} ${p.name}
+                            ${p.eliminated ? '<span class="badge bg-danger ms-1" style="font-size:0.6rem">OUT</span>' : ''}
+                        </div>
+                        <div class="leaderboard-player-stats">
+                            🏴 ${p.territoryCount} territories · ⚔️ ${p.totalArmies} armies
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
     showGameOver(winnerName) {
         document.getElementById('winner-name').textContent = winnerName;
         const winMsg = document.getElementById('win-message');
@@ -1106,6 +1178,9 @@ class RiskAIGame {
 
         const modal = new bootstrap.Modal(document.getElementById('game-over-modal'));
         modal.show();
+
+        // Update sidebar to show leaderboard
+        this.loadGameState().then(() => this.updateActionPanels());
     }
 }
 

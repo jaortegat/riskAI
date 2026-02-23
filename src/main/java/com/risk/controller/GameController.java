@@ -1,9 +1,21 @@
 package com.risk.controller;
 
 import com.risk.config.MapLoader;
-import com.risk.dto.*;
-import com.risk.model.*;
-import com.risk.service.*;
+import com.risk.dto.AttackResult;
+import com.risk.dto.CreateGameRequest;
+import com.risk.dto.GameStateDTO;
+import com.risk.dto.GameSummaryDTO;
+import com.risk.dto.JoinGameRequest;
+import com.risk.dto.MapInfoDTO;
+import com.risk.dto.PlayerDTO;
+import com.risk.dto.TerritoryDTO;
+import com.risk.model.CPUDifficulty;
+import com.risk.model.Game;
+import com.risk.model.GameStatus;
+import com.risk.model.Player;
+import com.risk.model.Territory;
+import com.risk.service.CPUPlayerService;
+import com.risk.service.GameService;
 import com.risk.websocket.GameWebSocketHandler;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,8 +24,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * REST API controller for game management.
@@ -67,7 +80,7 @@ public class GameController {
 
         List<GameSummaryDTO> summaries = games.stream()
                 .map(this::toGameSummary)
-                .collect(Collectors.toList());
+                .toList();
 
         return ResponseEntity.ok(summaries);
     }
@@ -120,7 +133,7 @@ public class GameController {
     @PostMapping("/{gameId}/start")
     public ResponseEntity<GameStateDTO> startGame(@PathVariable String gameId) {
         log.info("Starting game {}", gameId);
-        Game game = gameService.startGame(gameId);
+        gameService.startGame(gameId);
         
         webSocketHandler.broadcastGameStarted(gameId);
         
@@ -156,7 +169,7 @@ public class GameController {
                                                        @RequestParam String fromTerritoryKey,
                                                        @RequestParam String toTerritoryKey,
                                                        @RequestParam int armies) {
-        GameService.AttackResult result = gameService.attack(gameId, playerId, 
+        AttackResult result = gameService.attack(gameId, playerId, 
                 fromTerritoryKey, toTerritoryKey, armies);
         
         // Broadcast attack result to all players (so other humans see it in their game log)
@@ -197,9 +210,14 @@ public class GameController {
         gameService.fortify(gameId, playerId, fromTerritoryKey, toTerritoryKey, armies);
         GameStateDTO state = gameService.getGameState(gameId);
         webSocketHandler.broadcastGameUpdate(gameId);
-        
-        // Check if CPU turn should start
-        cpuPlayerService.checkAndTriggerCPUTurn(gameId);
+
+        // Check if game ended (e.g. turn-limit reached)
+        if (state.getStatus() == GameStatus.FINISHED) {
+            webSocketHandler.broadcastGameOver(gameId, state.getWinnerName());
+        } else {
+            // Check if CPU turn should start
+            cpuPlayerService.checkAndTriggerCPUTurn(gameId);
+        }
         
         return ResponseEntity.ok(state);
     }
@@ -211,12 +229,18 @@ public class GameController {
     public ResponseEntity<GameStateDTO> skipFortify(@PathVariable String gameId,
                                                      @RequestParam String playerId) {
         gameService.skipFortify(gameId, playerId);
+        GameStateDTO state = gameService.getGameState(gameId);
         webSocketHandler.broadcastGameUpdate(gameId);
+
+        // Check if game ended (e.g. turn-limit reached)
+        if (state.getStatus() == GameStatus.FINISHED) {
+            webSocketHandler.broadcastGameOver(gameId, state.getWinnerName());
+        } else {
+            // Check if CPU turn should start
+            cpuPlayerService.checkAndTriggerCPUTurn(gameId);
+        }
         
-        // Check if CPU turn should start
-        cpuPlayerService.checkAndTriggerCPUTurn(gameId);
-        
-        return ResponseEntity.ok(gameService.getGameState(gameId));
+        return ResponseEntity.ok(state);
     }
 
     private GameSummaryDTO toGameSummary(Game game) {
@@ -226,7 +250,9 @@ public class GameController {
         String mapName = "";
         try {
             mapName = mapLoader.getMap(game.getMapId()).name();
-        } catch (Exception ignored) {}
+        } catch (IllegalArgumentException e) {
+            log.debug("Map not found for game {}: {}", game.getId(), e.getMessage());
+        }
 
         return GameSummaryDTO.builder()
                 .id(game.getId())

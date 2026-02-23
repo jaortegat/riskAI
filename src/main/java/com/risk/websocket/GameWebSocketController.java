@@ -1,12 +1,19 @@
 package com.risk.websocket;
 
-import com.risk.dto.*;
-import com.risk.model.*;
-import com.risk.service.*;
-import lombok.*;
+import com.risk.dto.AttackResult;
+import com.risk.model.Game;
+import com.risk.model.GameStatus;
+import com.risk.model.Player;
+import com.risk.service.CPUPlayerService;
+import com.risk.service.GameService;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.messaging.handler.annotation.*;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Controller;
 
 /**
@@ -17,6 +24,8 @@ import org.springframework.stereotype.Controller;
 @Slf4j
 public class GameWebSocketController {
 
+    private static final String UNKNOWN_PLAYER = "Unknown";
+
     private final GameService gameService;
     private final CPUPlayerService cpuPlayerService;
     private final GameWebSocketHandler webSocketHandler;
@@ -26,8 +35,7 @@ public class GameWebSocketController {
      */
     @MessageMapping("/game/{gameId}/reinforce")
     public void handleReinforce(@DestinationVariable String gameId,
-                                @Payload ReinforceMessage message,
-                                SimpMessageHeaderAccessor headerAccessor) {
+                                @Payload ReinforceMessage message) {
         log.debug("Reinforce request: {} armies to {} in game {}",
                 message.getArmies(), message.getTerritoryKey(), gameId);
 
@@ -38,7 +46,7 @@ public class GameWebSocketController {
             
             // Check if CPU turn should start
             cpuPlayerService.checkAndTriggerCPUTurn(gameId);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error processing reinforce", e);
             sendError(gameId, message.getPlayerId(), e.getMessage());
         }
@@ -49,14 +57,13 @@ public class GameWebSocketController {
      */
     @MessageMapping("/game/{gameId}/attack")
     public void handleAttack(@DestinationVariable String gameId,
-                            @Payload AttackMessage message,
-                            SimpMessageHeaderAccessor headerAccessor) {
+                            @Payload AttackMessage message) {
         log.debug("Attack request: {} -> {} with {} armies in game {}",
                 message.getFromTerritoryKey(), message.getToTerritoryKey(),
                 message.getArmies(), gameId);
 
         try {
-            GameService.AttackResult result = gameService.attack(
+            AttackResult result = gameService.attack(
                     gameId, message.getPlayerId(),
                     message.getFromTerritoryKey(), message.getToTerritoryKey(),
                     message.getArmies());
@@ -72,14 +79,9 @@ public class GameWebSocketController {
             // Check for game over
             Game game = gameService.getGame(gameId);
             if (game.getStatus() == GameStatus.FINISHED) {
-                webSocketHandler.broadcastGameOver(gameId,
-                        game.getPlayers().stream()
-                                .filter(p -> p.getId().equals(game.getWinnerId()))
-                                .findFirst()
-                                .map(Player::getName)
-                                .orElse("Unknown"));
+                webSocketHandler.broadcastGameOver(gameId, getWinnerName(game));
             }
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error processing attack", e);
             sendError(gameId, message.getPlayerId(), e.getMessage());
         }
@@ -96,7 +98,7 @@ public class GameWebSocketController {
         try {
             gameService.endAttackPhase(gameId, message.getPlayerId());
             webSocketHandler.broadcastGameUpdate(gameId);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error ending attack phase", e);
             sendError(gameId, message.getPlayerId(), e.getMessage());
         }
@@ -120,18 +122,13 @@ public class GameWebSocketController {
 
             // Check if game ended (e.g. turn-limit reached)
             if (game.getStatus() == GameStatus.FINISHED) {
-                webSocketHandler.broadcastGameOver(gameId,
-                        game.getPlayers().stream()
-                                .filter(p -> p.getId().equals(game.getWinnerId()))
-                                .findFirst()
-                                .map(Player::getName)
-                                .orElse("Unknown"));
+                webSocketHandler.broadcastGameOver(gameId, getWinnerName(game));
                 return;
             }
             
             // Check if CPU turn should start
             cpuPlayerService.checkAndTriggerCPUTurn(gameId);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error processing fortify", e);
             sendError(gameId, message.getPlayerId(), e.getMessage());
         }
@@ -151,18 +148,13 @@ public class GameWebSocketController {
 
             // Check if game ended (e.g. turn-limit reached)
             if (game.getStatus() == GameStatus.FINISHED) {
-                webSocketHandler.broadcastGameOver(gameId,
-                        game.getPlayers().stream()
-                                .filter(p -> p.getId().equals(game.getWinnerId()))
-                                .findFirst()
-                                .map(Player::getName)
-                                .orElse("Unknown"));
+                webSocketHandler.broadcastGameOver(gameId, getWinnerName(game));
                 return;
             }
             
             // Check if CPU turn should start
             cpuPlayerService.checkAndTriggerCPUTurn(gameId);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error skipping fortify", e);
             sendError(gameId, message.getPlayerId(), e.getMessage());
         }
@@ -175,6 +167,14 @@ public class GameWebSocketController {
     public void handleChat(@DestinationVariable String gameId,
                           @Payload ChatMessageRequest message) {
         webSocketHandler.broadcastChatMessage(gameId, message.getPlayerName(), message.getMessage());
+    }
+
+    private String getWinnerName(Game game) {
+        return game.getPlayers().stream()
+                .filter(p -> p.getId().equals(game.getWinnerId()))
+                .findFirst()
+                .map(Player::getName)
+                .orElse(UNKNOWN_PLAYER);
     }
 
     private void sendError(String gameId, String playerId, String error) {

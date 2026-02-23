@@ -9,4 +9,10 @@ class RiskAIGameApplicationTests {
     @Test
     void contextLoads() {
     }
+
+    @Test
+    void mainMethodRunsSuccessfully() {
+        // Use a random port to avoid conflict with the @SpringBootTest context
+        RiskAIGameApplication.main(new String[]{"--server.port=0"});
+    }
 }

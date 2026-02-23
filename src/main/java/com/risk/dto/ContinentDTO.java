@@ -1,7 +1,10 @@
 package com.risk.dto;
 
 import com.risk.model.Continent;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * DTO for continent representation.
