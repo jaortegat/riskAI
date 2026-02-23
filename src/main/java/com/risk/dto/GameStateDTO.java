@@ -3,6 +3,7 @@ package com.risk.dto;
 import com.risk.model.Game;
 import com.risk.model.GamePhase;
 import com.risk.model.GameStatus;
+import com.risk.model.Player;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -65,6 +66,12 @@ public class GameStateDTO {
                 .createdAt(game.getCreatedAt())
                 .startedAt(game.getStartedAt())
                 .winnerId(game.getWinnerId())
+                .winnerName(game.getWinnerId() != null
+                    ? game.getPlayers().stream()
+                        .filter(p -> p.getId().equals(game.getWinnerId()))
+                        .map(Player::getName)
+                        .findFirst().orElse(null)
+                    : null)
                 .build();
     }
 }

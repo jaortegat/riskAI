@@ -86,6 +86,11 @@
         document.getElementById('join-game-form').addEventListener('submit', async function(e) {
             e.preventDefault();
 
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn.disabled) return;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Joining...';
+
             const sessionId = crypto.randomUUID();
             localStorage.setItem('sessionId', sessionId);
 
@@ -116,6 +121,8 @@
             } catch (error) {
                 document.getElementById('error-message').textContent = error.message;
                 document.getElementById('error-message').classList.remove('d-none');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '🎮 Join Game';
             }
         });
     </script>
