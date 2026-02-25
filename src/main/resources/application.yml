@@ -59,5 +59,6 @@ game:
 # Logging
 logging:
   level:
-    com.risk: DEBUG
+    com.riskai: DEBUG
     org.springframework.web.socket: INFO
+

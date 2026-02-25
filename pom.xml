@@ -11,7 +11,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.risk</groupId>
+    <groupId>com.riskai</groupId>
     <artifactId>riskai-game</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <name>RiskAI Board Game</name>
