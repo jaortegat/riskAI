@@ -106,6 +106,27 @@ public class GameLifecycleService {
     }
 
     /**
+     * Join an existing game with a specific player type (e.g. AI_AGENT via MCP).
+     */
+    public Player joinGame(String gameId, JoinGameRequest request, String sessionId, PlayerType playerType) {
+        Game game = gameQueryService.getGame(gameId);
+
+        if (game.getStatus() != GameStatus.WAITING_FOR_PLAYERS) {
+            throw new IllegalStateException("Game is not accepting new players");
+        }
+
+        if (game.isFull()) {
+            throw new IllegalStateException("Game is full");
+        }
+
+        if (playerRepository.existsByGameIdAndName(gameId, request.getPlayerName())) {
+            throw new IllegalArgumentException("Player name already taken");
+        }
+
+        return addPlayer(game, request.getPlayerName(), playerType, sessionId, null);
+    }
+
+    /**
      * Add a CPU player to the game.
      */
     public Player addCPUPlayer(String gameId, CPUDifficulty difficulty) {

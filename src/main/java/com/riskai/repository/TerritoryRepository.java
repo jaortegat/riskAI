@@ -14,16 +14,19 @@ import java.util.Optional;
 @Repository
 public interface TerritoryRepository extends JpaRepository<Territory, String> {
 
+    @Query("SELECT DISTINCT t FROM Territory t LEFT JOIN FETCH t.neighborKeys WHERE t.game.id = :gameId")
     List<Territory> findByGameId(String gameId);
 
+    @Query("SELECT t FROM Territory t LEFT JOIN FETCH t.neighborKeys WHERE t.game.id = :gameId AND t.territoryKey = :territoryKey")
     Optional<Territory> findByGameIdAndTerritoryKey(String gameId, String territoryKey);
 
+    @Query("SELECT DISTINCT t FROM Territory t LEFT JOIN FETCH t.neighborKeys WHERE t.owner.id = :ownerId")
     List<Territory> findByOwnerId(String ownerId);
 
-    @Query("SELECT t FROM Territory t WHERE t.game.id = :gameId AND t.owner IS NULL")
+    @Query("SELECT DISTINCT t FROM Territory t LEFT JOIN FETCH t.neighborKeys WHERE t.game.id = :gameId AND t.owner IS NULL")
     List<Territory> findUnownedTerritoriesByGameId(String gameId);
 
-    @Query("SELECT t FROM Territory t WHERE t.game.id = :gameId AND t.owner.id = :ownerId AND t.armies > 1")
+    @Query("SELECT DISTINCT t FROM Territory t LEFT JOIN FETCH t.neighborKeys WHERE t.game.id = :gameId AND t.owner.id = :ownerId AND t.armies > 1")
     List<Territory> findAttackCapableTerritories(String gameId, String ownerId);
 }
 

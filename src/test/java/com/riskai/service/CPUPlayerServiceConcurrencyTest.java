@@ -26,6 +26,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.riskai.cpu.CPUStrategy;
 import com.riskai.cpu.CPUStrategyFactory;
+import com.riskai.dto.GameStateDTO;
+import com.riskai.dto.PlayerDTO;
 import com.riskai.model.CPUDifficulty;
 import com.riskai.model.Game;
 import com.riskai.model.GameMode;
@@ -120,7 +122,7 @@ class CPUPlayerServiceConcurrencyTest {
 
             // First call returns active game (with a slight delay to simulate work),
             // subsequent calls during the same turn return finished game
-            when(gameService.getGame("game-1")).thenAnswer(inv -> {
+            when(gameService.getGameWithPlayers("game-1")).thenAnswer(inv -> {
                 executionCount.incrementAndGet();
                 Thread.sleep(50); // Simulate some work
                 return finishedGame; // Game ends immediately (finished)
@@ -198,11 +200,11 @@ class CPUPlayerServiceConcurrencyTest {
             AtomicInteger game1Calls = new AtomicInteger(0);
             AtomicInteger game2Calls = new AtomicInteger(0);
 
-            when(gameService.getGame("game-1")).thenAnswer(inv -> {
+            when(gameService.getGameWithPlayers("game-1")).thenAnswer(inv -> {
                 game1Calls.incrementAndGet();
                 return finishedGame1;
             });
-            when(gameService.getGame("game-2")).thenAnswer(inv -> {
+            when(gameService.getGameWithPlayers("game-2")).thenAnswer(inv -> {
                 game2Calls.incrementAndGet();
                 return game2;
             });
@@ -244,7 +246,7 @@ class CPUPlayerServiceConcurrencyTest {
         @DisplayName("should not execute when player is not the current player")
         void shouldNotExecuteForWrongPlayer() {
             game.setCurrentPlayerIndex(1); // Human is current, not CPU
-            when(gameService.getGame("game-1")).thenReturn(game);
+            when(gameService.getGameWithPlayers("game-1")).thenReturn(game);
 
             cpuPlayerService.executeCPUTurn("game-1", "cpu-1");
 
@@ -255,7 +257,7 @@ class CPUPlayerServiceConcurrencyTest {
         @Test
         @DisplayName("should not execute for human player")
         void shouldNotExecuteForHuman() {
-            when(gameService.getGame("game-1")).thenReturn(game);
+            when(gameService.getGameWithPlayers("game-1")).thenReturn(game);
 
             cpuPlayerService.executeCPUTurn("game-1", "human-1");
 
@@ -281,19 +283,30 @@ class CPUPlayerServiceConcurrencyTest {
                     .players(game.getPlayers())
                     .winnerId("cpu-1")
                     .build();
-            when(gameService.getGame("game-1")).thenReturn(finishedGame);
+            // checkAndTriggerCPUTurn now uses getGameState() (not getGame())
+            GameStateDTO finishedState = GameStateDTO.builder()
+                    .gameId("game-1")
+                    .status(GameStatus.FINISHED)
+                    .currentPlayer(PlayerDTO.builder().id("cpu-1").type(PlayerType.CPU).build())
+                    .build();
+            when(gameService.getGameState("game-1")).thenReturn(finishedState);
 
             cpuPlayerService.checkAndTriggerCPUTurn("game-1");
 
-            // Should have attempted to get the game
-            verify(gameService, atLeastOnce()).getGame("game-1");
+            // Should have used getGameState to check current player
+            verify(gameService, atLeastOnce()).getGameState("game-1");
         }
 
         @Test
         @DisplayName("checkAndTriggerCPUTurn should not trigger when current player is human")
         void shouldNotTriggerWhenHumanIsNext() {
-            game.setCurrentPlayerIndex(1); // Human player
-            when(gameService.getGame("game-1")).thenReturn(game);
+            // checkAndTriggerCPUTurn now uses getGameState() (not getGame())
+            GameStateDTO humanState = GameStateDTO.builder()
+                    .gameId("game-1")
+                    .status(GameStatus.IN_PROGRESS)
+                    .currentPlayer(PlayerDTO.builder().id("human-1").type(PlayerType.HUMAN).build())
+                    .build();
+            when(gameService.getGameState("game-1")).thenReturn(humanState);
 
             cpuPlayerService.checkAndTriggerCPUTurn("game-1");
 

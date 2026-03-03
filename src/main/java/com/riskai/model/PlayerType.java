@@ -5,6 +5,7 @@ package com.riskai.model;
  */
 public enum PlayerType {
     HUMAN,
-    CPU
+    CPU,
+    AI_AGENT
 }
 

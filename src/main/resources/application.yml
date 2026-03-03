@@ -43,6 +43,15 @@ spring:
       name: admin
       password: admin123
 
+  # Spring AI MCP Server
+  ai:
+    mcp:
+      server:
+        name: riskai-mcp-server
+        version: 1.0.0
+        type: SYNC
+        sse-message-endpoint: /mcp/messages
+
 # Server Configuration
 server:
   port: 8080

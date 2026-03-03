@@ -7,6 +7,7 @@ import com.riskai.dto.JoinGameRequest;
 import com.riskai.model.CPUDifficulty;
 import com.riskai.model.Game;
 import com.riskai.model.Player;
+import com.riskai.model.PlayerType;
 import com.riskai.model.Territory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +50,10 @@ public class GameService {
         return lifecycleService.joinGame(gameId, request, sessionId);
     }
 
+    public Player joinGame(String gameId, JoinGameRequest request, String sessionId, PlayerType playerType) {
+        return lifecycleService.joinGame(gameId, request, sessionId, playerType);
+    }
+
     public Player addCPUPlayer(String gameId, CPUDifficulty difficulty) {
         return lifecycleService.addCPUPlayer(gameId, difficulty);
     }
@@ -88,6 +93,11 @@ public class GameService {
     @Transactional(readOnly = true)
     public Game getGame(String gameId) {
         return queryService.getGame(gameId);
+    }
+
+    @Transactional(readOnly = true)
+    public Game getGameWithPlayers(String gameId) {
+        return queryService.getGameWithPlayers(gameId);
     }
 
     @Transactional(readOnly = true)

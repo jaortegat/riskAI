@@ -4,11 +4,14 @@ import com.riskai.cpu.CPUAction;
 import com.riskai.cpu.CPUStrategy;
 import com.riskai.cpu.CPUStrategyFactory;
 import com.riskai.dto.AttackResult;
+import com.riskai.dto.GameStateDTO;
+import com.riskai.dto.PlayerDTO;
 import com.riskai.model.Game;
 import com.riskai.model.GamePhase;
 import com.riskai.model.GameStatus;
 import com.riskai.model.Player;
-import com.riskai.model.Territory;
+import com.riskai.model.PlayerType;
+import com.riskai.dto.TerritoryDTO;
 import com.riskai.websocket.GameWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +19,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -49,7 +53,10 @@ public class CPUPlayerService {
             return;
         }
         try {
-            Game game = gameService.getGame(gameId);
+            // Use getGameWithPlayers to eagerly fetch the players list; getGame() uses findById()
+            // which leaves players lazy — accessing game.getCurrentPlayer() outside a session would
+            // throw LazyInitializationException, silently swallowed and the turn never fires.
+            Game game = gameService.getGameWithPlayers(gameId);
             Player cpuPlayer = game.getCurrentPlayer();
 
             if (cpuPlayer == null || !cpuPlayer.getId().equals(playerId) || !cpuPlayer.isCPU()) {
@@ -68,7 +75,7 @@ public class CPUPlayerService {
             executeAttackPhase(game, cpuPlayer, strategy);
 
             // Stop if game ended during attack phase
-            game = gameService.getGame(gameId);
+            game = gameService.getGameWithPlayers(gameId);
             if (game.getStatus() == GameStatus.FINISHED) {
                 log.info("Game {} ended during {}'s attack phase", game.getName(), cpuPlayer.getName());
                 return;
@@ -78,7 +85,7 @@ public class CPUPlayerService {
             executeFortifyPhase(game, cpuPlayer, strategy);
 
             // Check if game ended during endTurn (turn limit reached)
-            game = gameService.getGame(gameId);
+            game = gameService.getGameWithPlayers(gameId);
             if (game.getStatus() == GameStatus.FINISHED) {
                 webSocketHandler.broadcastGameOver(game.getId(), getWinnerName(game));
                 log.info("Game {} ended (turn limit) during {}'s turn", game.getName(), cpuPlayer.getName());
@@ -90,13 +97,10 @@ public class CPUPlayerService {
 
             log.info("{} completed turn in game {}", cpuPlayer.getName(), game.getName());
 
-            // Check if the next player is also a CPU and trigger their turn
-            Game updatedGame = gameService.getGame(gameId);
-            if (updatedGame.getCurrentPlayer() != null &&
-                    !updatedGame.getCurrentPlayer().getId().equals(playerId) &&
-                    updatedGame.getStatus() == GameStatus.IN_PROGRESS) {
-                checkAndTriggerCPUTurn(gameId);
-            }
+            // Check if the next player is also a CPU and trigger their turn.
+            // Use checkAndTriggerCPUTurn (which uses getGameState) to safely access
+            // the current player without triggering a lazy-load outside a session.
+            checkAndTriggerCPUTurn(gameId);
 
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
@@ -167,7 +171,7 @@ public class CPUPlayerService {
                     attacks++;
 
                     // Check if game is over after this attack
-                    game = gameService.getGame(game.getId());
+                    game = gameService.getGameWithPlayers(game.getId());
                     if (game.getStatus() == GameStatus.FINISHED) {
                         webSocketHandler.broadcastGameOver(game.getId(), getWinnerName(game));
                         return;
@@ -180,7 +184,7 @@ public class CPUPlayerService {
         }
 
         // Ensure we transition out of ATTACK phase (handles exception breaks and maxAttacks exit)
-        game = gameService.getGame(game.getId());
+        game = gameService.getGameWithPlayers(game.getId());
         if (game.getCurrentPhase() == GamePhase.ATTACK) {
             gameService.endAttackPhase(game.getId(), cpuPlayer.getId());
             webSocketHandler.broadcastGameUpdate(game.getId());
@@ -190,7 +194,9 @@ public class CPUPlayerService {
     private void executeFortifyPhase(Game game, Player cpuPlayer, CPUStrategy strategy) throws InterruptedException {
         Thread.sleep(thinkDelayMs);
 
-        game = gameService.getGame(game.getId());
+        // Use getGameWithPlayers: we need game.getPlayers() to refresh the cpuPlayer reference.
+        // game.getTerritories() is also lazy, so we fetch territory names via getGameState().
+        game = gameService.getGameWithPlayers(game.getId());
         // Refresh cpuPlayer reference from the reloaded game
         final String cpuId = cpuPlayer.getId();
         cpuPlayer = game.getPlayers().stream()
@@ -210,13 +216,19 @@ public class CPUPlayerService {
                     action.getFromTerritoryKey(), action.getToTerritoryKey(),
                     action.getArmies());
 
-            // Broadcast CPU fortify details for modal display
-            String fromName = game.getTerritories().stream()
+            // Broadcast CPU fortify details for modal display.
+            // Use getGameState() to resolve territory names — game.getTerritories() is lazy
+            // and would throw LazyInitializationException outside a Hibernate session.
+            List<TerritoryDTO> territories =
+                    gameService.getGameState(game.getId()).getTerritories();
+            String fromName = territories.stream()
                     .filter(t -> t.getTerritoryKey().equals(action.getFromTerritoryKey()))
-                    .map(Territory::getName).findFirst().orElse(action.getFromTerritoryKey());
-            String toName = game.getTerritories().stream()
+                    .map(TerritoryDTO::getName)
+                    .findFirst().orElse(action.getFromTerritoryKey());
+            String toName = territories.stream()
                     .filter(t -> t.getTerritoryKey().equals(action.getToTerritoryKey()))
-                    .map(Territory::getName).findFirst().orElse(action.getToTerritoryKey());
+                    .map(TerritoryDTO::getName)
+                    .findFirst().orElse(action.getToTerritoryKey());
             webSocketHandler.broadcastCPUFortify(game.getId(), cpuPlayer.getName(),
                     fromName, toName, action.getArmies());
         }
@@ -235,14 +247,18 @@ public class CPUPlayerService {
 
     /**
      * Check if the current player is a CPU and trigger their turn.
+     * Uses getGameState() to avoid LazyInitializationException: game.getCurrentPlayer()
+     * accesses the lazy 'players' collection outside a Hibernate session when using
+     * getGame(), causing the exception to be silently swallowed and the CPU turn to
+     * never fire. getGameState() uses findByIdWithPlayers() which eagerly joins players.
      */
     public void checkAndTriggerCPUTurn(String gameId) {
         try {
-            Game game = gameService.getGame(gameId);
-            Player currentPlayer = game.getCurrentPlayer();
+            GameStateDTO state = gameService.getGameState(gameId);
+            PlayerDTO currentPlayer = state.getCurrentPlayer();
 
-            if (currentPlayer != null && currentPlayer.isCPU() && 
-                game.getStatus() == GameStatus.IN_PROGRESS) {
+            if (currentPlayer != null && currentPlayer.getType() == PlayerType.CPU &&
+                    state.getStatus() == GameStatus.IN_PROGRESS) {
                 executeCPUTurn(gameId, currentPlayer.getId());
             }
         } catch (RuntimeException e) {

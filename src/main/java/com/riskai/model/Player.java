@@ -98,6 +98,10 @@ public class Player {
         return type == PlayerType.HUMAN;
     }
 
+    public boolean isAIAgent() {
+        return type == PlayerType.AI_AGENT;
+    }
+
     public void eliminate() {
         this.eliminated = true;
     }

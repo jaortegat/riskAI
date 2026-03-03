@@ -42,6 +42,19 @@ public class GameQueryService {
     }
 
     /**
+     * Get game by ID with players eagerly loaded via JOIN FETCH.
+     * Use this instead of getGame() whenever players (or getCurrentPlayer()) are
+     * accessed outside an active Hibernate session, to avoid LazyInitializationException.
+     */
+    public Game getGameWithPlayers(String gameId) {
+        Game game = gameRepository.findByIdWithPlayers(gameId);
+        if (game == null) {
+            throw new IllegalArgumentException("Game not found: " + gameId);
+        }
+        return game;
+    }
+
+    /**
      * Get full game state as DTO.
      */
     public GameStateDTO getGameState(String gameId) {

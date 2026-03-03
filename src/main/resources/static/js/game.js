@@ -514,7 +514,7 @@ class RiskAIGame {
                 <div class="player-card ${isCurrentTurn ? 'current-turn' : ''} ${player.eliminated ? 'eliminated' : ''}" 
                      style="border-color: ${player.colorHex}">
                     <div class="player-name" style="color: ${player.colorHex}">
-                        ${player.type === 'CPU' ? '🤖' : '👤'} ${player.name}
+                        ${player.type === 'CPU' ? '💻' : player.type === 'AI_AGENT' ? '🤖' : '👨‍🦰​'} ${player.name}
                         ${isCurrentTurn ? '◀' : ''}
                     </div>
                     <div class="player-stats">

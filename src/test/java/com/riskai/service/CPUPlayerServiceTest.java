@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
+import com.riskai.dto.GameStateDTO;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -86,16 +88,16 @@ class CPUPlayerServiceTest {
             Game afterTurn = makeGame(GamePhase.REINFORCEMENT, GameStatus.IN_PROGRESS, 0);
             afterTurn.setCurrentPlayerIndex(1);
 
+            when(gameService.getGameWithPlayers("game-1")).thenReturn(
+                    initial,       // executeCPUTurn initial (getGameWithPlayers)
+                    fortifyPhase,  // end of attack loop phase check (getGameWithPlayers)
+                    fortifyPhase,  // post-attack game-ended check (getGameWithPlayers)
+                    fortifyPhase,  // executeFortifyPhase reload (getGameWithPlayers)
+                    afterTurn      // post-fortify game-ended check (getGameWithPlayers)
+            );
             when(gameService.getGame("game-1")).thenReturn(
-                    initial,       // executeCPUTurn initial
-                    noReinf,       // after placeArmies in reinforce loop
-                    noReinf,       // attack loop entry
-                    fortifyPhase,  // post-attack-loop check (FORTIFY → skip fallback)
-                    fortifyPhase,  // post-attack game-ended check
-                    fortifyPhase,  // executeFortifyPhase reload
-                    afterTurn,     // post-fortify game-ended check
-                    afterTurn,     // next player check
-                    afterTurn      // checkAndTriggerCPUTurn
+                    noReinf,       // after placeArmies in reinforce loop (getGame)
+                    noReinf        // attack loop entry (getGame)
             );
 
             when(strategyFactory.getStrategy(any(Player.class))).thenReturn(cpuStrategy);
@@ -120,12 +122,13 @@ class CPUPlayerServiceTest {
             Game finished = makeGame(GamePhase.GAME_OVER, GameStatus.FINISHED, 0);
             finished.setWinnerId("cpu-1");
 
+            when(gameService.getGameWithPlayers("game-1")).thenReturn(
+                    initial,       // executeCPUTurn initial (getGameWithPlayers)
+                    finished,      // after attack FINISHED check in loop (getGameWithPlayers)
+                    finished       // post-attack check in executeCPUTurn (getGameWithPlayers)
+            );
             when(gameService.getGame("game-1")).thenReturn(
-                    initial,       // initial
-                    attackPhase,   // attack loop entry
-                    finished,      // after attack → check game over → FINISHED
-                    finished,      // post-loop (GAME_OVER → skip fallback)
-                    finished       // post-attack check → FINISHED → return
+                    attackPhase    // attack loop entry (getGame)
             );
 
             when(strategyFactory.getStrategy(any(Player.class))).thenReturn(cpuStrategy);
@@ -153,13 +156,15 @@ class CPUPlayerServiceTest {
             Game finished = makeGame(GamePhase.GAME_OVER, GameStatus.FINISHED, 0);
             finished.setWinnerId("cpu-1");
 
+            when(gameService.getGameWithPlayers("game-1")).thenReturn(
+                    initial,       // executeCPUTurn initial (getGameWithPlayers)
+                    fortifyPhase,  // end of attack loop phase check (getGameWithPlayers)
+                    inProgress,    // post-attack check, not finished (getGameWithPlayers)
+                    fortifyPhase,  // executeFortifyPhase reload (getGameWithPlayers)
+                    finished       // post-fortify check → FINISHED → broadcastGameOver (getGameWithPlayers)
+            );
             when(gameService.getGame("game-1")).thenReturn(
-                    initial,       // initial
-                    attackPhase,   // attack loop (END_ATTACK)
-                    fortifyPhase,  // post-loop (FORTIFY → skip fallback)
-                    inProgress,    // post-attack check (not finished)
-                    fortifyPhase,  // executeFortifyPhase reload
-                    finished       // post-fortify check → FINISHED
+                    attackPhase    // attack loop entry (getGame)
             );
 
             when(strategyFactory.getStrategy(any(Player.class))).thenReturn(cpuStrategy);
@@ -181,15 +186,15 @@ class CPUPlayerServiceTest {
             Game afterTurn = makeGame(GamePhase.REINFORCEMENT, GameStatus.IN_PROGRESS, 0);
             afterTurn.setCurrentPlayerIndex(1);
 
+            when(gameService.getGameWithPlayers("game-1")).thenReturn(
+                    initial,       // executeCPUTurn initial (getGameWithPlayers)
+                    attackPhase,   // end of attack loop, still ATTACK → fallback endAttackPhase (getGameWithPlayers)
+                    fortifyPhase,  // post-attack check, not finished (getGameWithPlayers)
+                    fortifyPhase,  // executeFortifyPhase reload (getGameWithPlayers)
+                    afterTurn      // post-fortify check (getGameWithPlayers)
+            );
             when(gameService.getGame("game-1")).thenReturn(
-                    initial,       // initial
-                    attackPhase,   // attack loop entry
-                    attackPhase,   // post-loop (still ATTACK → fallback endAttackPhase)
-                    fortifyPhase,  // post-attack check (not finished)
-                    fortifyPhase,  // executeFortifyPhase
-                    afterTurn,     // post-fortify check
-                    afterTurn,     // next player check
-                    afterTurn      // checkAndTriggerCPUTurn
+                    attackPhase    // attack loop entry (getGame)
             );
 
             when(strategyFactory.getStrategy(any(Player.class))).thenReturn(cpuStrategy);
@@ -221,17 +226,17 @@ class CPUPlayerServiceTest {
             Game afterTurn = makeGame(GamePhase.REINFORCEMENT, GameStatus.IN_PROGRESS, 0);
             afterTurn.setCurrentPlayerIndex(1);
 
+            when(gameService.getGameWithPlayers("game-1")).thenReturn(
+                    withReinf,     // executeCPUTurn initial (getGameWithPlayers)
+                    fortifyPhase,  // end of attack loop phase check (getGameWithPlayers)
+                    fortifyPhase,  // post-attack check (getGameWithPlayers)
+                    fortifyPhase,  // executeFortifyPhase reload (getGameWithPlayers)
+                    afterTurn      // post-fortify check (getGameWithPlayers)
+            );
             when(gameService.getGame("game-1")).thenReturn(
-                    withReinf,     // initial
-                    lessReinf,     // after first placeArmies
-                    noReinf,       // after second placeArmies (0 remaining → exit)
-                    noReinf,       // attack loop
-                    fortifyPhase,  // post-loop
-                    fortifyPhase,  // post-attack check
-                    fortifyPhase,  // fortify phase
-                    afterTurn,     // post-fortify check
-                    afterTurn,     // next player check
-                    afterTurn      // checkAndTriggerCPUTurn
+                    lessReinf,     // after first placeArmies in reinforce loop (getGame)
+                    noReinf,       // after second placeArmies, 0 remaining → exit loop (getGame)
+                    noReinf        // attack loop entry (getGame)
             );
 
             when(strategyFactory.getStrategy(any(Player.class))).thenReturn(cpuStrategy);
@@ -262,15 +267,22 @@ class CPUPlayerServiceTest {
             Game afterTurn = makeGame(GamePhase.REINFORCEMENT, GameStatus.IN_PROGRESS, 0);
             afterTurn.setCurrentPlayerIndex(1);
 
+            when(gameService.getGameWithPlayers("game-1")).thenReturn(
+                    initial,       // executeCPUTurn initial (getGameWithPlayers)
+                    fortifyPhase,  // end of attack loop phase check (getGameWithPlayers)
+                    fortifyPhase,  // post-attack check (getGameWithPlayers)
+                    fortifyPhase,  // executeFortifyPhase reload (getGameWithPlayers)
+                    afterTurn      // post-fortify check (getGameWithPlayers)
+            );
             when(gameService.getGame("game-1")).thenReturn(
-                    initial,       // initial
-                    attackPhase,   // attack loop
-                    fortifyPhase,  // post-loop (FORTIFY → skip fallback)
-                    fortifyPhase,  // post-attack check
-                    fortifyPhase,  // fortify reload
-                    afterTurn,     // post-fortify check
-                    afterTurn,     // next player check
-                    afterTurn      // checkAndTriggerCPUTurn
+                    attackPhase    // attack loop entry (getGame)
+            );
+            // Stub getGameState for territory name resolution in executeFortifyPhase
+            when(gameService.getGameState("game-1")).thenReturn(
+                    GameStateDTO.builder().gameId("game-1").territories(List.of(
+                            com.riskai.dto.TerritoryDTO.builder().territoryKey("brazil").name("Brazil").build(),
+                            com.riskai.dto.TerritoryDTO.builder().territoryKey("argentina").name("Argentina").build()
+                    )).build()
             );
 
             when(strategyFactory.getStrategy(any(Player.class))).thenReturn(cpuStrategy);
@@ -295,15 +307,19 @@ class CPUPlayerServiceTest {
             Game afterTurn = makeGameNoTerritories(GamePhase.REINFORCEMENT, GameStatus.IN_PROGRESS, 0);
             afterTurn.setCurrentPlayerIndex(1);
 
+            when(gameService.getGameWithPlayers("game-1")).thenReturn(
+                    initial,       // executeCPUTurn initial (getGameWithPlayers)
+                    fortifyPhase,  // end of attack loop phase check (getGameWithPlayers)
+                    fortifyPhase,  // post-attack check (getGameWithPlayers)
+                    fortifyPhase,  // executeFortifyPhase reload (getGameWithPlayers)
+                    afterTurn      // post-fortify check (getGameWithPlayers)
+            );
             when(gameService.getGame("game-1")).thenReturn(
-                    initial,       // initial
-                    attackPhase,   // attack loop
-                    fortifyPhase,  // post-loop
-                    fortifyPhase,  // post-attack check
-                    fortifyPhase,  // fortify reload
-                    afterTurn,     // post-fortify check
-                    afterTurn,     // next player check
-                    afterTurn      // checkAndTriggerCPUTurn
+                    attackPhase    // attack loop entry (getGame)
+            );
+            // Empty territories → keys used as fallback names
+            when(gameService.getGameState("game-1")).thenReturn(
+                    GameStateDTO.builder().gameId("game-1").territories(List.of()).build()
             );
 
             when(strategyFactory.getStrategy(any(Player.class))).thenReturn(cpuStrategy);
@@ -326,15 +342,15 @@ class CPUPlayerServiceTest {
             Game nextTurn = makeGame(GamePhase.REINFORCEMENT, GameStatus.IN_PROGRESS, 0);
             nextTurn.setCurrentPlayerIndex(1);
 
+            when(gameService.getGameWithPlayers("game-1")).thenReturn(
+                    initial,      // executeCPUTurn initial (getGameWithPlayers)
+                    nextTurn,     // end of attack loop, phase REINFORCEMENT → skip fallback (getGameWithPlayers)
+                    nextTurn,     // post-attack check (getGameWithPlayers)
+                    nextTurn,     // executeFortifyPhase reload → phase != FORTIFY → return early (getGameWithPlayers)
+                    nextTurn      // post-fortify check (getGameWithPlayers)
+            );
             when(gameService.getGame("game-1")).thenReturn(
-                    initial,    // initial
-                    attackPhase, // attack loop
-                    nextTurn,    // post-loop (REINFORCEMENT → skip fallback)
-                    nextTurn,    // post-attack check
-                    nextTurn,    // executeFortifyPhase → not FORTIFY → return early
-                    nextTurn,    // post-fortify check
-                    nextTurn,    // next player check
-                    nextTurn     // checkAndTriggerCPUTurn
+                    attackPhase   // attack loop entry (getGame)
             );
 
             when(strategyFactory.getStrategy(any(Player.class))).thenReturn(cpuStrategy);
@@ -355,7 +371,7 @@ class CPUPlayerServiceTest {
         @Test
         @DisplayName("should handle RuntimeException in executeCPUTurn")
         void shouldHandleRuntimeException() {
-            when(gameService.getGame("game-1"))
+            when(gameService.getGameWithPlayers("game-1"))
                     .thenThrow(new RuntimeException("DB error"));
 
             cpuPlayerService.executeCPUTurn("game-1", "cpu-1");
@@ -369,7 +385,7 @@ class CPUPlayerServiceTest {
             ReflectionTestUtils.setField(cpuPlayerService, "thinkDelayMs", 10000L);
 
             Game initial = makeGame(GamePhase.REINFORCEMENT, GameStatus.IN_PROGRESS, 5);
-            when(gameService.getGame("game-1")).thenReturn(initial);
+            when(gameService.getGameWithPlayers("game-1")).thenReturn(initial);
             when(strategyFactory.getStrategy(any(Player.class))).thenReturn(cpuStrategy);
 
             Thread testThread = Thread.currentThread();
@@ -401,12 +417,13 @@ class CPUPlayerServiceTest {
             Game finished = makeGame(GamePhase.GAME_OVER, GameStatus.FINISHED, 0);
             finished.setWinnerId("nonexistent-player");
 
+            when(gameService.getGameWithPlayers("game-1")).thenReturn(
+                    initial,       // executeCPUTurn initial (getGameWithPlayers)
+                    finished,      // after attack FINISHED check in loop (getGameWithPlayers)
+                    finished       // post-attack check in executeCPUTurn (getGameWithPlayers)
+            );
             when(gameService.getGame("game-1")).thenReturn(
-                    initial,       // initial
-                    attackPhase,   // attack loop
-                    finished,      // after attack → FINISHED
-                    finished,      // post-loop (GAME_OVER → skip fallback)
-                    finished       // post-attack → FINISHED → broadcastGameOver
+                    attackPhase    // attack loop entry (getGame)
             );
 
             when(strategyFactory.getStrategy(any(Player.class))).thenReturn(cpuStrategy);
@@ -431,7 +448,7 @@ class CPUPlayerServiceTest {
         @Test
         @DisplayName("should handle RuntimeException in checkAndTriggerCPUTurn")
         void shouldHandleRuntimeExceptionInCheck() {
-            when(gameService.getGame("game-1"))
+            when(gameService.getGameState("game-1"))
                     .thenThrow(new RuntimeException("DB error"));
 
             cpuPlayerService.checkAndTriggerCPUTurn("game-1");
@@ -442,8 +459,9 @@ class CPUPlayerServiceTest {
         @Test
         @DisplayName("should not trigger when game is finished")
         void shouldNotTriggerWhenFinished() {
-            Game finished = makeGame(GamePhase.GAME_OVER, GameStatus.FINISHED, 0);
-            when(gameService.getGame("game-1")).thenReturn(finished);
+            GameStateDTO finishedState = GameStateDTO.builder()
+                    .gameId("game-1").status(GameStatus.FINISHED).build();
+            when(gameService.getGameState("game-1")).thenReturn(finishedState);
 
             cpuPlayerService.checkAndTriggerCPUTurn("game-1");
 
