@@ -6,7 +6,7 @@ A web-based RiskAI board game implementation using modern Java technologies, wit
 ## Technology Stack
 - Java 25
 - Spring Boot 4.0 (Spring Framework 7, Hibernate 7, Jackson 3)
-- Spring AI 1.0+ with MCP Server support
+- Spring AI 2.0.0-M2 with MCP Server support (Streamable HTTP transport)
 - Spring WebSocket for real-time updates
 - Spring Data JPA with H2 (in-memory)
 - Spring Security 7
@@ -18,7 +18,7 @@ A web-based RiskAI board game implementation using modern Java technologies, wit
 The project includes an MCP server that exposes game functionality as tools for AI agents and LLM-based clients via the Model Context Protocol.
 
 ### Dependencies
-- `spring-ai-starter-mcp-server-webmvc` — MCP server over HTTP using Spring MVC (SSE transport)
+- `spring-ai-starter-mcp-server-webmvc` — MCP server over HTTP using Spring MVC (Streamable HTTP transport)
 
 ### MCP Configuration
 Configure in `application.yml`:
@@ -29,9 +29,15 @@ spring:
       server:
         name: riskai-mcp-server
         version: 1.0.0
-        type: SYNC
-        sse-message-endpoint: /mcp/messages
+        protocol: STREAMABLE
+        annotation-scanner:
+          enabled: false  # explicit ToolCallbackProvider registration in MCPConfig
+        streamable-http:
+          mcp-endpoint: /mcp
 ```
+
+### Session Tokens
+When an AI agent joins a game via `joinGame`, the MCP service returns an `MCPSessionResult` containing a UUID session token. The agent must include this token in every subsequent tool call. The token is validated against the player ID to prevent agents from impersonating other players.
 
 ### Exposing Tools
 Use `@Tool` and `@ToolParam` annotations from Spring AI to expose service methods as MCP-callable tools:
@@ -63,7 +69,10 @@ public ToolCallbackProvider gameTools(GameMCPService gameMCPService) {
 - Use `@ToolParam(description = "...")` on method parameters for clear tool schemas
 - Return DTOs or records from tool methods, never JPA entities
 - Keep MCP services thin — delegate business logic to existing service classes
-- Use `SYNC` server type with SSE transport for the WebMVC stack
+- Use `STREAMABLE` protocol with Streamable HTTP transport for the WebMVC stack
+- Action tool methods must accept a `sessionToken` parameter and call `validateSession()` to verify identity
+- The `joinGame` tool returns `MCPSessionResult` (player + sessionToken + hint), not `PlayerDTO` directly
+- Read-only query tools (listJoinableGames, listAllGames, getGameState, getAttackableTargets) do not require session tokens
 
 ## Key Patterns
 - Strategy Pattern for CPU players (Easy, Medium, Hard difficulties)
@@ -79,9 +88,9 @@ mvn spring-boot:run
 Then navigate to http://localhost:8080
 
 ### MCP Server Endpoint
-The MCP SSE endpoint is available at:
+The MCP Streamable HTTP endpoint is available at:
 ```
-http://localhost:8080/sse
+http://localhost:8080/mcp
 ```
 
 ## Project Structure

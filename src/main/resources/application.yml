@@ -2,6 +2,9 @@ spring:
   application:
     name: riskai-game
     version: @project.version@
+  threads:
+    virtual:
+      enabled: true
   output:
     ansi:
       enabled: always
@@ -43,14 +46,17 @@ spring:
       name: admin
       password: admin123
 
-  # Spring AI MCP Server
+  # Spring AI MCP Server (Streamable HTTP transport)
   ai:
     mcp:
       server:
         name: riskai-mcp-server
         version: 1.0.0
-        type: SYNC
-        sse-message-endpoint: /mcp/messages
+        protocol: STREAMABLE
+        annotation-scanner:
+          enabled: false
+        streamable-http:
+          mcp-endpoint: /mcp
 
 # Server Configuration
 server:

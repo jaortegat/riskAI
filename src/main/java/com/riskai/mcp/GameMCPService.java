@@ -1,10 +1,13 @@
 package com.riskai.mcp;
 
-import com.riskai.dto.AttackOptionDTO;
 import com.riskai.dto.AttackResult;
 import com.riskai.dto.GameStateDTO;
 import com.riskai.dto.GameSummaryDTO;
 import com.riskai.dto.JoinGameRequest;
+import com.riskai.dto.MCPAttackOptionDTO;
+import com.riskai.dto.MCPPhaseResultDTO;
+import com.riskai.dto.MCPSessionResult;
+import com.riskai.dto.MCPTerritoryDTO;
 import com.riskai.dto.PlayerDTO;
 import com.riskai.dto.TerritoryDTO;
 import com.riskai.dto.TurnStatusDTO;
@@ -28,6 +31,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * MCP tool service that exposes RiskAI game operations for AI agents.
@@ -50,6 +55,31 @@ public class GameMCPService {
     private final MapLoader mapLoader;
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    /**
+     * Maps session tokens to player IDs. Generated when an agent joins a game via
+     * {@link #joinGame}. Every subsequent action tool requires the token to verify
+     * that the caller owns the claimed player ID.
+     */
+    private final ConcurrentHashMap<String, String> sessionTokens = new ConcurrentHashMap<>();
+
+    /**
+     * Validates that the given session token is bound to the expected player ID.
+     *
+     * @throws SecurityException if the token is missing, unknown, or maps to a different player
+     */
+    private void validateSession(String sessionToken, String playerId) {
+        if (sessionToken == null || sessionToken.isBlank()) {
+            throw new SecurityException("Session token is required. Obtain one by calling joinGame first.");
+        }
+        String boundPlayerId = sessionTokens.get(sessionToken);
+        if (boundPlayerId == null) {
+            throw new SecurityException("Unknown session token. Call joinGame to obtain a valid token.");
+        }
+        if (!boundPlayerId.equals(playerId)) {
+            throw new SecurityException("Session token does not match the provided player ID.");
+        }
+    }
 
     // ── Query Tools ────────────────────────────────────────────────────
 
@@ -85,22 +115,26 @@ public class GameMCPService {
     @Tool(description = "Get the list of territories owned by a specific player in a game, "
             + "including army counts and neighbor information. "
             + "Useful for planning reinforcements, attacks, and fortifications.")
-    public List<TerritoryDTO> getPlayerTerritories(
+    public List<MCPTerritoryDTO> getPlayerTerritories(
             @ToolParam(description = "The unique ID of the game") String gameId,
-            @ToolParam(description = "The unique ID of the player") String playerId) {
+            @ToolParam(description = "The unique ID of the player") String playerId,
+            @ToolParam(description = "Your session token (received when joining the game)") String sessionToken) {
+        validateSession(sessionToken, playerId);
         log.info("[MCP] Getting territories for player {} in game {}", playerId, gameId);
         GameStateDTO state = gameService.getGameState(gameId);
         return state.getTerritories().stream()
                 .filter(t -> playerId.equals(t.getOwnerId()))
+                .map(MCPTerritoryDTO::fromTerritoryDTO)
                 .toList();
     }
 
     @Tool(description = "Get territories that can be attacked from a given territory. "
-            + "Returns a list of attack options, each containing the target territory "
-            + "and maxAttackArmies — the exact number of armies to pass to the attack tool. "
+            + "Returns a list of attack options, each containing the target territory key, "
+            + "owner, army count, and maxAttackArmies — the exact number of armies to pass "
+            + "to the attack tool. "
             + "IMPORTANT: always use maxAttackArmies from this response when calling attack; "
             + "never hard-code or guess the army count.")
-    public List<AttackOptionDTO> getAttackableTargets(
+    public List<MCPAttackOptionDTO> getAttackableTargets(
             @ToolParam(description = "The unique ID of the game") String gameId,
             @ToolParam(description = "The territory key of the source territory to attack from") String territoryKey) {
         log.info("[MCP] Getting attackable targets from {} in game {}", territoryKey, gameId);
@@ -116,7 +150,7 @@ public class GameMCPService {
         return state.getTerritories().stream()
                 .filter(t -> source.getNeighborKeys().contains(t.getTerritoryKey()))
                 .filter(t -> !source.getOwnerId().equals(t.getOwnerId()))
-                .map(t -> new AttackOptionDTO(t, maxAttackArmies))
+                .map(t -> new MCPAttackOptionDTO(t.getTerritoryKey(), t.getOwnerName(), t.getArmies(), maxAttackArmies))
                 .toList();
     }
 
@@ -133,7 +167,9 @@ public class GameMCPService {
             + "After each action, call this again to see if your phase changed or your turn ended.")
     public TurnStatusDTO getMyTurnStatus(
             @ToolParam(description = "The unique ID of the game") String gameId,
-            @ToolParam(description = "Your player ID (received when joining the game)") String playerId) {
+            @ToolParam(description = "Your player ID (received when joining the game)") String playerId,
+            @ToolParam(description = "Your session token (received when joining the game)") String sessionToken) {
+        validateSession(sessionToken, playerId);
         log.debug("[MCP] Checking turn status for player {} in game {}", playerId, gameId);
         GameStateDTO state = gameService.getGameState(gameId);
 
@@ -210,19 +246,21 @@ public class GameMCPService {
     public TurnStatusDTO waitForMyTurn(
             @ToolParam(description = "The unique ID of the game") String gameId,
             @ToolParam(description = "Your player ID (received when joining the game)") String playerId,
+            @ToolParam(description = "Your session token (received when joining the game)") String sessionToken,
             @ToolParam(description = "Maximum seconds to wait before returning (1-60, default 30)") int timeoutSeconds) {
+        validateSession(sessionToken, playerId);
         int clampedTimeout = Math.clamp(timeoutSeconds, 1, 60);
         log.info("[MCP] Player {} waiting for turn in game {} (timeout {}s)", playerId, gameId, clampedTimeout);
 
         long deadline = System.currentTimeMillis() + (clampedTimeout * 1000L);
 
         while (System.currentTimeMillis() < deadline) {
-            TurnStatusDTO status = getMyTurnStatus(gameId, playerId);
+            TurnStatusDTO status = getMyTurnStatus(gameId, playerId, sessionToken);
             if (status.isYourTurn() || status.gameStatus() == GameStatus.FINISHED) {
                 return status;
             }
             try {
-                Thread.sleep(1000);
+                Thread.sleep(500);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return status;
@@ -230,15 +268,17 @@ public class GameMCPService {
         }
 
         // Timeout expired — return current status (isYourTurn will be false)
-        return getMyTurnStatus(gameId, playerId);
+        return getMyTurnStatus(gameId, playerId, sessionToken);
     }
 
     // ── Game Lifecycle Tools ───────────────────────────────────────────
 
     @Tool(description = "Join an existing game as an AI player. "
             + "The game must be in WAITING_FOR_PLAYERS status and not full. "
-            + "Returns your player details including your player ID (needed for all subsequent actions).")
-    public PlayerDTO joinGame(
+            + "Returns your player details and a SESSION TOKEN. "
+            + "IMPORTANT: Save the sessionToken — you MUST pass it in every subsequent tool call "
+            + "to prove your identity. Without it, action calls will be rejected.")
+    public MCPSessionResult joinGame(
             @ToolParam(description = "The unique ID of the game to join") String gameId,
             @ToolParam(description = "Your player name (2-30 characters, must be unique in the game)") String playerName) {
         log.info("[MCP] Player '{}' joining game {}", playerName, gameId);
@@ -249,9 +289,22 @@ public class GameMCPService {
 
         Player player = gameService.joinGame(gameId, request, "mcp-" + playerName, PlayerType.AI_AGENT);
         PlayerDTO dto = PlayerDTO.fromPlayer(player);
+
+        String sessionToken = UUID.randomUUID().toString();
+        sessionTokens.put(sessionToken, player.getId());
+        log.info("[MCP] Session token generated for player '{}' (id={}) in game {}", playerName, player.getId(), gameId);
+
         webSocketHandler.broadcastPlayerJoined(gameId, dto);
         webSocketHandler.broadcastGameUpdate(gameId);
-        return dto;
+
+        return new MCPSessionResult(
+                dto,
+                sessionToken,
+                "You joined game " + gameId + " as '" + playerName + "'. "
+                        + "Your player ID is " + player.getId() + ". "
+                        + "SAVE your sessionToken — pass it in every subsequent tool call. "
+                        + "Call getMyTurnStatus to check when it's your turn."
+        );
     }
 
     // ── Reinforcement Tools ────────────────────────────────────────────
@@ -261,11 +314,13 @@ public class GameMCPService {
             + "Call getGameState to check reinforcementsRemaining. You can split reinforcements across "
             + "multiple territories by calling this tool multiple times. "
             + "Once all reinforcements are placed, the phase automatically advances to ATTACK.")
-    public TerritoryDTO placeArmies(
+    public MCPTerritoryDTO placeArmies(
             @ToolParam(description = "The unique ID of the game") String gameId,
             @ToolParam(description = "Your player ID (received when joining the game)") String playerId,
+            @ToolParam(description = "Your session token (received when joining the game)") String sessionToken,
             @ToolParam(description = "The territory key where you want to place armies (must be a territory you own)") String territoryKey,
             @ToolParam(description = "Number of armies to place (1 to reinforcementsRemaining)") int armies) {
+        validateSession(sessionToken, playerId);
         log.info("[MCP] Player {} placing {} armies on {} in game {}", playerId, armies, territoryKey, gameId);
 
         gameService.placeArmies(gameId, playerId, territoryKey, armies);
@@ -274,6 +329,7 @@ public class GameMCPService {
         // Fetch from game state to avoid lazy-proxy "no session" error on the detached Territory entity
         return gameService.getGameState(gameId).getTerritories().stream()
                 .filter(t -> territoryKey.equals(t.getTerritoryKey()))
+                .map(MCPTerritoryDTO::fromTerritoryDTO)
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Territory not found: " + territoryKey));
     }
@@ -289,9 +345,11 @@ public class GameMCPService {
     public Map<String, Object> attack(
             @ToolParam(description = "The unique ID of the game") String gameId,
             @ToolParam(description = "Your player ID") String playerId,
+            @ToolParam(description = "Your session token (received when joining the game)") String sessionToken,
             @ToolParam(description = "Territory key you are attacking FROM (must own, must have 2+ armies)") String fromTerritoryKey,
             @ToolParam(description = "Territory key you are attacking (must be adjacent, must be owned by opponent)") String toTerritoryKey,
             @ToolParam(description = "Number of armies to attack with (1-3, must be less than armies on source territory)") int armies) {
+        validateSession(sessionToken, playerId);
         log.info("[MCP] Player {} attacking from {} to {} with {} armies in game {}",
                 playerId, fromTerritoryKey, toTerritoryKey, armies, gameId);
 
@@ -312,13 +370,15 @@ public class GameMCPService {
 
     @Tool(description = "End the attack phase and move to the FORTIFICATION phase. "
             + "Call this when you are done attacking for this turn.")
-    public GameStateDTO endAttackPhase(
+    public MCPPhaseResultDTO endAttackPhase(
             @ToolParam(description = "The unique ID of the game") String gameId,
-            @ToolParam(description = "Your player ID") String playerId) {
+            @ToolParam(description = "Your player ID") String playerId,
+            @ToolParam(description = "Your session token (received when joining the game)") String sessionToken) {
+        validateSession(sessionToken, playerId);
         log.info("[MCP] Player {} ending attack phase in game {}", playerId, gameId);
         gameService.endAttackPhase(gameId, playerId);
         webSocketHandler.broadcastGameUpdate(gameId);
-        return gameService.getGameState(gameId);
+        return toPhaseResult(gameService.getGameState(gameId));
     }
 
     // ── Fortification Tools ────────────────────────────────────────────
@@ -326,12 +386,14 @@ public class GameMCPService {
     @Tool(description = "Move armies between two of your connected territories during the FORTIFICATION phase. "
             + "You can only fortify once per turn. The territories must both be yours and adjacent. "
             + "After fortifying, your turn ends and the next player begins.")
-    public GameStateDTO fortify(
+    public MCPPhaseResultDTO fortify(
             @ToolParam(description = "The unique ID of the game") String gameId,
             @ToolParam(description = "Your player ID") String playerId,
+            @ToolParam(description = "Your session token (received when joining the game)") String sessionToken,
             @ToolParam(description = "Territory key to move armies FROM (must own, must have 2+ armies)") String fromTerritoryKey,
             @ToolParam(description = "Territory key to move armies TO (must own, must be adjacent)") String toTerritoryKey,
             @ToolParam(description = "Number of armies to move (must leave at least 1 behind)") int armies) {
+        validateSession(sessionToken, playerId);
         log.info("[MCP] Player {} fortifying {} -> {} ({} armies) in game {}",
                 playerId, fromTerritoryKey, toTerritoryKey, armies, gameId);
 
@@ -345,14 +407,16 @@ public class GameMCPService {
             cpuPlayerService.checkAndTriggerCPUTurn(gameId);
         }
 
-        return state;
+        return toPhaseResult(state);
     }
 
     @Tool(description = "Skip the fortification phase and end your turn without moving any armies. "
             + "Use this when you don't want to or can't fortify.")
-    public GameStateDTO skipFortify(
+    public MCPPhaseResultDTO skipFortify(
             @ToolParam(description = "The unique ID of the game") String gameId,
-            @ToolParam(description = "Your player ID") String playerId) {
+            @ToolParam(description = "Your player ID") String playerId,
+            @ToolParam(description = "Your session token (received when joining the game)") String sessionToken) {
+        validateSession(sessionToken, playerId);
         log.info("[MCP] Player {} skipping fortification in game {}", playerId, gameId);
 
         gameService.skipFortify(gameId, playerId);
@@ -365,10 +429,40 @@ public class GameMCPService {
             cpuPlayerService.checkAndTriggerCPUTurn(gameId);
         }
 
-        return state;
+        return toPhaseResult(state);
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────
+
+    /**
+     * Converts a full GameStateDTO to a lightweight phase result for MCP responses.
+     */
+    private MCPPhaseResultDTO toPhaseResult(GameStateDTO state) {
+        List<MCPPhaseResultDTO.PlayerScoreDTO> scores = state.getPlayers().stream()
+                .map(p -> new MCPPhaseResultDTO.PlayerScoreDTO(
+                        p.getName(), p.getTerritoryCount(), p.getTotalArmies(), p.isEliminated()))
+                .toList();
+
+        String hint;
+        if (state.getStatus() == GameStatus.FINISHED) {
+            hint = "Game over! Winner: " + state.getWinnerName();
+        } else {
+            hint = "Phase: " + state.getCurrentPhase()
+                    + ", Turn: " + state.getTurnNumber()
+                    + ", Current player: " + (state.getCurrentPlayer() != null
+                        ? state.getCurrentPlayer().getName() : "none");
+        }
+
+        return new MCPPhaseResultDTO(
+                state.getStatus(),
+                state.getCurrentPhase(),
+                state.getTurnNumber(),
+                state.getCurrentPlayer() != null ? state.getCurrentPlayer().getName() : null,
+                scores,
+                state.getWinnerName(),
+                hint
+        );
+    }
 
     private GameSummaryDTO toGameSummary(Game game) {
         String hostName = game.getPlayers().isEmpty() ? "Unknown" :
