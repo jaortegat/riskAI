@@ -71,7 +71,7 @@
                             <div class="mt-2">
                                 <strong>Current Players:</strong>
                                 <ul class="mb-0">
-                                    ${game.players.map(p => `<li>${p.name} ${p.type === 'CPU' ? '🤖' : '👤'}</li>`).join('')}
+                                    ${game.players.map(p => `<li>${p.name} ${p.type === 'CPU' ? '💻' : p.type === 'AI_AGENT' ? '🤖' : '👨‍🦰​'}</li>`).join('')}
                                 </ul>
                             </div>
                         </div>

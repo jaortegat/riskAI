@@ -514,7 +514,7 @@ class RiskAIGame {
                 <div class="player-card ${isCurrentTurn ? 'current-turn' : ''} ${player.eliminated ? 'eliminated' : ''}" 
                      style="border-color: ${player.colorHex}">
                     <div class="player-name" style="color: ${player.colorHex}">
-                        ${player.type === 'CPU' ? '🤖' : '👤'} ${player.name}
+                        ${player.type === 'CPU' ? '💻' : player.type === 'AI_AGENT' ? '🤖' : '👨‍🦰​'} ${player.name}
                         ${isCurrentTurn ? '◀' : ''}
                     </div>
                     <div class="player-stats">
@@ -983,7 +983,7 @@ class RiskAIGame {
         let text = `⚔️ ${fromName} → ${toName} (−${result.attackerLosses} / −${result.defenderLosses})`;
         this.addLogEntry(text, 'attack');
         if (result.conquered) {
-            this.addLogEntry(`🏴 ${toName} conquered!`, 'conquered');
+            this.addLogEntry(`🏳️ ${toName} conquered!`, 'conquered');
         }
         if (result.eliminatedPlayer) {
             this.addLogEntry(`💀 ${result.eliminatedPlayer} eliminated!`, 'eliminated');
@@ -1131,11 +1131,11 @@ class RiskAIGame {
                     <span class="leaderboard-rank">${rank}</span>
                     <div class="leaderboard-player-info">
                         <div class="leaderboard-player-name" style="color: ${p.colorHex}">
-                            ${p.type === 'CPU' ? '🤖' : '👤'} ${p.name}
+                            ${p.type === 'CPU' ? '💻' : (p.type === 'AI_AGENT' ? '🤖' : '👨‍🦰')} ${p.name}
                             ${p.eliminated ? '<span class="badge bg-danger ms-1" style="font-size:0.6rem">OUT</span>' : ''}
                         </div>
                         <div class="leaderboard-player-stats">
-                            🏴 ${p.territoryCount} territories · ⚔️ ${p.totalArmies} armies
+                            🏳️ ${p.territoryCount} territories · ⚔️ ${p.totalArmies} armies
                         </div>
                     </div>
                 </div>
@@ -1161,7 +1161,7 @@ class RiskAIGame {
             statsBody.innerHTML = sorted.map((p, i) => `
                 <tr class="${p.name === winnerName ? 'table-active fw-bold' : ''} ${p.eliminated ? 'text-decoration-line-through opacity-50' : ''}">
                     <td>${i === 0 ? '👑' : i + 1}</td>
-                    <td><span style="color:${p.colorHex}">${p.type === 'CPU' ? '🤖' : '👤'} ${p.name}</span></td>
+                    <td><span style="color:${p.colorHex}">${p.type === 'CPU' ? '💻' : (p.type === 'AI_AGENT' ? '🤖' : '👨‍🦰')} ${p.name}</span></td>
                     <td>${p.territoryCount}</td>
                     <td>${p.totalArmies}</td>
                 </tr>

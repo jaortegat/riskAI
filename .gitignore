@@ -38,6 +38,8 @@ buildNumber.properties
 # IDE
 .idea/
 *.iml
+# Spring configuration metadata
+META-INF/spring-configuration-metadata.json
 *.ipr
 *.iws
 .project
