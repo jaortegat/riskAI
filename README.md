@@ -1,33 +1,37 @@
 # 🌍 RiskAI - World Domination
 
-A modern web-based implementation of the classic Risk board game with CPU players, built with the latest Java technologies.
+A modern web-based implementation of the classic Risk board game with CPU opponents, AI agent support via MCP (Model Context Protocol), and real-time multiplayer — built with the latest Java technologies.
+
+> **📖 Looking for gameplay instructions?** See [HOW-TO-PLAY.md](HOW-TO-PLAY.md)
 
 ## ✨ Features
 
-- **Multiplayer Support**: Create games and invite friends to join
-- **CPU Players**: Play against computer opponents with different difficulty levels (Easy, Medium, Hard)
-- **Game Modes**: Classic (eliminate all), Domination (control X% of the map), Turn Limit (most territories after N turns)
-- **Custom Maps**: Load built-in maps or add your own via the `maps/` directory
-- **Real-time Updates**: WebSocket-based live game updates
-- **Interactive Map**: SVG-based world map with clickable territories
-- **Full Game Rules**: Reinforcement, Attack, and Fortify phases
-- **Spectator Mode**: Watch ongoing games without participating
-- **In-game Chat**: Communicate with other players during matches
-- **Responsive Design**: Play on desktop or tablet
+- **Multiplayer Support** — Create games and invite friends to join
+- **CPU Players** — Play against computer opponents (Easy, Medium, Hard)
+- **AI Agent Players** — AI agents (e.g. GitHub Copilot) can join and play via the MCP server
+- **Game Modes** — Classic (eliminate all), Domination (control X%), Turn Limit (most territories after N turns)
+- **Multiple Maps** — Classic World (42 territories), Europe (24 territories) and more
+- **Real-time Updates** — WebSocket-based live game state broadcasting
+- **Interactive Map** — SVG-based map with clickable territories
+- **Spectator Mode** — Watch ongoing games without participating
 
-## 🛠️ Technologies
+## 🛠️ Technology Stack
 
-- **Java 25** - Latest version
-- **Spring Boot 4.0** - Modern Spring framework (Spring Framework 7)
-- **Spring WebSocket** - Real-time bidirectional communication
-- **Spring Data JPA** - Database persistence (Hibernate 7)
-- **Spring Security 7** - Authentication and authorization
-- **H2 Database** - In-memory database for development
-- **Jackson 3** - JSON serialization
-- **Thymeleaf** - Server-side HTML templating
-- **Bootstrap 5** - Responsive CSS framework
-- **Lombok 1.18.42** - Reduce boilerplate code
-- **Maven** - Build and dependency management
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Language | Java | 25 |
+| Framework | Spring Boot | 4.0.2 |
+| ORM | Spring Data JPA (Hibernate 7) | — |
+| Security | Spring Security | 7 |
+| Real-time | Spring WebSocket (STOMP/SockJS) | — |
+| AI Integration | Spring AI MCP Server | 2.0.0-M2 |
+| Templating | Thymeleaf | — |
+| Database | H2 (dev) / PostgreSQL (prod) | — |
+| Serialization | Jackson 3 | — |
+| UI | Bootstrap 5 | — |
+| Code Gen | Lombok | 1.18.42 |
+| Coverage | JaCoCo | 0.8.13 |
+| Build | Maven | 3.9+ |
 
 ## 🚀 Getting Started
 
@@ -36,89 +40,181 @@ A modern web-based implementation of the classic Risk board game with CPU player
 - Java 25 or higher
 - Maven 3.9+
 
-### Running the Application
+### Run
 
-1. **Clone the repository**
-   ```bash
-   cd riskai
-   ```
+```bash
+mvn spring-boot:run
+```
 
-2. **Build the project**
-   ```bash
-   mvn clean install
-   ```
+Open http://localhost:8080 in your browser.
 
-3. **Run the application**
-   ```bash
-   mvn spring-boot:run
-   ```
+### Build
 
-4. **Open your browser**
-   Navigate to `http://localhost:8080`
+```bash
+mvn clean install
+```
 
-### Running Tests
+### Test
 
 ```bash
 mvn test
 ```
 
-## 🎮 How to Play
+### Docker
 
-### Creating a Game
+Build the image:
 
-1. Click "Create New Game" on the lobby page
-2. Enter a game name and your player name
-3. Choose a map and game mode
-4. Optionally add CPU players with a difficulty level
-5. Share the game link with friends or add more CPU players
-6. Click "Start Game" when ready
+```bash
+docker build -t riskai .
+```
 
-### Game Modes
+Run the container:
 
-- **Classic**: Eliminate all other players by conquering every territory
-- **Domination**: First player to control a target percentage of the map wins
-- **Turn Limit**: The player with the most territories after a set number of turns wins
+```bash
+docker run -d -p 8080:8080 --name riskai riskai
+```
 
-### Game Phases
+With memory limit (JVM auto-adjusts via `MaxRAMPercentage`):
 
-1. **Reinforcement Phase**
-   - Receive armies based on territories owned and continent bonuses
-   - Click on your territories to place armies
+```bash
+docker run -d -p 8080:8080 -m 512m --name riskai riskai
+```
 
-2. **Attack Phase**
-   - Select one of your territories with 2+ armies
-   - Click an adjacent enemy territory to attack
-   - Dice are rolled automatically
-   - Continue attacking or end the phase
+With production profile:
 
-3. **Fortify Phase**
-   - Move armies between connected territories you own
-   - Or skip to end your turn
+```bash
+docker run -d -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prod --name riskai riskai
+```
+
+Useful commands:
+
+```bash
+docker logs -f riskai    # View logs
+docker stop riskai       # Stop
+docker rm riskai         # Remove
+```
+
+### Connecting the MCP Server to an AI Client
+
+The MCP server exposes game tools over Streamable HTTP at `/mcp`. To connect an AI agent, add the server to your client's MCP configuration.
+
+#### VS Code (GitHub Copilot)
+
+Add to your `.vscode/mcp.json` (or user `settings.json` under `mcp`):
+
+```json
+{
+  "servers": {
+    "riskai": {
+      "type": "http",
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
+```
+
+#### Claude Desktop
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "riskai": {
+      "type": "streamable-http",
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
+```
+
+#### Any MCP-compatible Client
+
+Point the client to the Streamable HTTP endpoint:
+
+```
+URL: http://localhost:8080/mcp
+Transport: Streamable HTTP
+```
+
+Once connected, the AI agent can discover and call all game tools (join games, place armies, attack, etc.) through the MCP protocol.
+
+## 📐 Project Structure
+
+```
+src/main/java/com/riskai/
+├── config/          # Spring configuration (security, async, websocket, maps, MCP)
+├── controller/      # REST and web controllers
+├── cpu/             # CPU player strategies (Easy, Medium, Hard)
+├── dto/             # Data Transfer Objects
+├── exception/       # Global exception handling
+├── mcp/             # MCP tool service for AI agents
+├── model/           # JPA entities and enums
+├── repository/      # Spring Data JPA repositories
+├── service/         # Business logic services
+└── websocket/       # WebSocket handlers for real-time communication
+
+src/main/resources/
+├── maps/            # Map definitions (classic-world.json, europe.json)
+├── static/          # CSS and JavaScript
+├── templates/       # Thymeleaf HTML templates
+├── application.yml  # Default configuration
+└── application-prod.properties  # Production overrides
+```
 
 ## 🔧 Configuration
 
-### Application Properties
-
-Key configuration options in `application.yml`:
+### application.yml
 
 ```yaml
+server:
+  port: 8080
+
 game:
-  maps-directory: maps        # External maps directory
-  max-players: 6              # Maximum players per game
-  min-players: 2              # Minimum players to start
+  maps-directory: maps         # Map files location
+  max-players: 6               # Maximum players per game
+  min-players: 2               # Minimum players to start
   cpu:
-    think-delay-ms: 3000      # CPU decision delay (ms)
-    default-difficulty: MEDIUM
+    think-delay-ms: 3000       # CPU decision delay (ms)
+    default-difficulty: MEDIUM  # EASY, MEDIUM, HARD
+
+spring:
+  ai:
+    mcp:
+      server:
+        name: riskai-mcp-server
+        version: 1.0.0
+        protocol: STREAMABLE
+        streamable-http:
+          mcp-endpoint: /mcp
 ```
 
-## 🔌 API Endpoints
+### Production Database
+
+The default configuration uses an in-memory H2 database. To use PostgreSQL in production, edit `application-prod.properties`:
+
+```properties
+spring.datasource.url=jdbc:postgresql://localhost:5432/riskdb
+spring.datasource.username=your_username
+spring.datasource.password=your_password
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+```
+
+Run with the production profile:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=prod
+```
+
+## 🔌 API Reference
 
 ### REST API (`/api/games`)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/games/maps` | List available maps |
-| GET | `/api/games` | List all games |
+| GET | `/api/games` | List all games (`?joinableOnly=true` to filter) |
 | POST | `/api/games` | Create a new game |
 | GET | `/api/games/{id}` | Get game state |
 | POST | `/api/games/{id}/join` | Join a game |
@@ -132,36 +228,43 @@ game:
 
 ### WebSocket (STOMP over SockJS)
 
-Connect to `/ws` using SockJS/STOMP for real-time updates.
+Connect to `/ws` using SockJS/STOMP. Subscribe to `/topic/game/{gameId}` for real-time events:
 
-Subscribe to `/topic/game/{gameId}` for game events:
-- `GAME_UPDATE` — state changed
-- `GAME_STARTED` — game began
-- `GAME_OVER` — game finished
-- `ATTACK_RESULT` — dice roll outcome
-- `CPU_FORTIFY` — CPU army movement
-- `CPU_TURN_END` — CPU finished turn
-- `PLAYER_JOINED` — new player joined
+| Event | Description |
+|-------|-------------|
+| `GAME_UPDATE` | Game state changed |
+| `GAME_STARTED` | Game began |
+| `GAME_OVER` | Game finished (includes winner) |
+| `ATTACK_RESULT` | Dice roll outcome |
+| `CPU_FORTIFY` | CPU army movement |
+| `CPU_TURN_END` | CPU finished turn |
+| `PLAYER_JOINED` | New player joined |
+| `PLAYER_LEFT` | Player left |
+| `CHAT` | Chat message (on `/topic/game/{gameId}/chat`) |
+| `ERROR` | Error (targeted to specific player) |
 
-Send actions to `/app/game/{gameId}/{action}` (reinforce, attack, endAttack, fortify, skipFortify, chat).
+Send actions to `/app/game/{gameId}/{action}` where action is: `reinforce`, `attack`, `endAttack`, `fortify`, `skipFortify`, `chat`.
 
-## 🤝 Contributing
+### MCP Server (`/mcp`)
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests
-5. Submit a pull request
+The MCP Streamable HTTP endpoint exposes game operations as tools for AI agents. See the [MCP Server Report](MCP_SERVER_REPORT.md) for full details.
+
+| Tool | Description | Session Required |
+|------|-------------|:---:|
+| `listJoinableGames` | List available games | No |
+| `listAllGames` | List all games | No |
+| `getGameState` | Full game state | No |
+| `getAttackableTargets` | Valid attack targets from a territory | No |
+| `getPlayerTerritories` | Player's territories with army counts | Yes |
+| `getMyTurnStatus` | Check turn status and available actions | Yes |
+| `waitForMyTurn` | Long-poll until it's your turn | Yes |
+| `joinGame` | Join a game (returns session token) | No |
+| `placeArmies` | Place reinforcement armies | Yes |
+| `attack` | Attack enemy territory | Yes |
+| `endAttackPhase` | End attack phase | Yes |
+| `fortify` | Move armies between territories | Yes |
+| `skipFortify` | Skip fortification | Yes |
 
 ## 📝 License
 
 This project is for educational purposes. Risk is a trademark of Hasbro. RiskAI is a fan project.
-
-## 🎯 Future Improvements
-
-- [ ] Player authentication with accounts
-- [ ] Territory cards and trading
-- [ ] Game replay / history
-- [ ] Mobile-responsive improvements
-- [ ] Tournament mode
-- [ ] Sound effects and animations
