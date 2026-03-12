@@ -130,6 +130,9 @@ public class CPUPlayerService {
             gameService.placeArmies(game.getId(), cpuPlayer.getId(),
                     action.getToTerritoryKey(), action.getArmies());
 
+            log.info("[CPU] {} placing {} armies on {} in game {}",
+                    cpuPlayer.getName(), action.getArmies(), action.getToTerritoryKey(), game.getId());
+
             webSocketHandler.broadcastGameUpdate(game.getId());
 
             game = gameService.getGame(game.getId());
@@ -153,6 +156,7 @@ public class CPUPlayerService {
             CPUAction action = strategy.decideAttack(game, cpuPlayer);
 
             if (action == null || action.getType() == CPUAction.ActionType.END_ATTACK) {
+                log.info("[CPU] {} ending attack phase in game {}", cpuPlayer.getName(), game.getId());
                 gameService.endAttackPhase(game.getId(), cpuPlayer.getId());
                 webSocketHandler.broadcastGameUpdate(game.getId());
                 break;
@@ -160,6 +164,9 @@ public class CPUPlayerService {
 
             if (action.getType() == CPUAction.ActionType.ATTACK) {
                 try {
+                    log.info("[CPU] {} attacking from {} to {} with {} armies in game {}",
+                            cpuPlayer.getName(), action.getFromTerritoryKey(), action.getToTerritoryKey(),
+                            action.getArmies(), game.getId());
                     AttackResult result = gameService.attack(
                             game.getId(), cpuPlayer.getId(),
                             action.getFromTerritoryKey(), action.getToTerritoryKey(),
@@ -177,7 +184,7 @@ public class CPUPlayerService {
                         return;
                     }
                 } catch (RuntimeException e) {
-                    log.debug("CPU attack failed: {}", e.getMessage());
+                    log.error("CPU attack failed: {}", e.getMessage());
                     break;
                 }
             }
@@ -210,8 +217,12 @@ public class CPUPlayerService {
         CPUAction action = strategy.decideFortify(game, cpuPlayer);
 
         if (action == null || action.getType() == CPUAction.ActionType.SKIP_FORTIFY) {
+            log.info("[CPU] {} skipping fortification in game {}", cpuPlayer.getName(), game.getId());
             gameService.skipFortify(game.getId(), cpuPlayer.getId());
         } else if (action.getType() == CPUAction.ActionType.FORTIFY) {
+            log.info("[CPU] {} fortifying {} -> {} ({} armies) in game {}",
+                    cpuPlayer.getName(), action.getFromTerritoryKey(), action.getToTerritoryKey(),
+                    action.getArmies(), game.getId());
             gameService.fortify(game.getId(), cpuPlayer.getId(),
                     action.getFromTerritoryKey(), action.getToTerritoryKey(),
                     action.getArmies());

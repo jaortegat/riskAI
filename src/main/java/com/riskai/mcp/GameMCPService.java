@@ -250,7 +250,7 @@ public class GameMCPService {
             @ToolParam(description = "Maximum seconds to wait before returning (1-60, default 30)") int timeoutSeconds) {
         validateSession(sessionToken, playerId);
         int clampedTimeout = Math.clamp(timeoutSeconds, 1, 60);
-        log.info("[MCP] Player {} waiting for turn in game {} (timeout {}s)", playerId, gameId, clampedTimeout);
+        log.debug("[MCP] Player {} waiting for turn in game {} (timeout {}s)", playerId, gameId, clampedTimeout);
 
         long deadline = System.currentTimeMillis() + (clampedTimeout * 1000L);
 

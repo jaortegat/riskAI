@@ -151,6 +151,7 @@ public class GameController {
                                                      @RequestParam String playerId,
                                                      @RequestParam String territoryKey,
                                                      @RequestParam int armies) {
+        log.info("[HUMAN] Player {} placing {} armies on {} in game {}", playerId, armies, territoryKey, gameId);
         Territory territory = gameService.placeArmies(gameId, playerId, territoryKey, armies);
         webSocketHandler.broadcastGameUpdate(gameId);
         
@@ -169,6 +170,7 @@ public class GameController {
                                                        @RequestParam String fromTerritoryKey,
                                                        @RequestParam String toTerritoryKey,
                                                        @RequestParam int armies) {
+        log.info("[HUMAN] Player {} attacking from {} to {} with {} armies in game {}", playerId, fromTerritoryKey, toTerritoryKey, armies, gameId);
         AttackResult result = gameService.attack(gameId, playerId, 
                 fromTerritoryKey, toTerritoryKey, armies);
         
@@ -193,6 +195,7 @@ public class GameController {
     @PostMapping("/{gameId}/endAttack")
     public ResponseEntity<GameStateDTO> endAttack(@PathVariable String gameId,
                                                    @RequestParam String playerId) {
+        log.info("[HUMAN] Player {} ending attack phase in game {}", playerId, gameId);
         gameService.endAttackPhase(gameId, playerId);
         webSocketHandler.broadcastGameUpdate(gameId);
         return ResponseEntity.ok(gameService.getGameState(gameId));
@@ -207,6 +210,7 @@ public class GameController {
                                                  @RequestParam String fromTerritoryKey,
                                                  @RequestParam String toTerritoryKey,
                                                  @RequestParam int armies) {
+        log.info("[HUMAN] Player {} fortifying {} -> {} ({} armies) in game {}", playerId, fromTerritoryKey, toTerritoryKey, armies, gameId);
         gameService.fortify(gameId, playerId, fromTerritoryKey, toTerritoryKey, armies);
         GameStateDTO state = gameService.getGameState(gameId);
         webSocketHandler.broadcastGameUpdate(gameId);
@@ -228,6 +232,7 @@ public class GameController {
     @PostMapping("/{gameId}/skipFortify")
     public ResponseEntity<GameStateDTO> skipFortify(@PathVariable String gameId,
                                                      @RequestParam String playerId) {
+        log.info("[HUMAN] Player {} skipping fortification in game {}", playerId, gameId);
         gameService.skipFortify(gameId, playerId);
         GameStateDTO state = gameService.getGameState(gameId);
         webSocketHandler.broadcastGameUpdate(gameId);

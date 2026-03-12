@@ -983,7 +983,7 @@ class RiskAIGame {
         let text = `⚔️ ${fromName} → ${toName} (−${result.attackerLosses} / −${result.defenderLosses})`;
         this.addLogEntry(text, 'attack');
         if (result.conquered) {
-            this.addLogEntry(`🏴 ${toName} conquered!`, 'conquered');
+            this.addLogEntry(`🏳️ ${toName} conquered!`, 'conquered');
         }
         if (result.eliminatedPlayer) {
             this.addLogEntry(`💀 ${result.eliminatedPlayer} eliminated!`, 'eliminated');
@@ -1135,7 +1135,7 @@ class RiskAIGame {
                             ${p.eliminated ? '<span class="badge bg-danger ms-1" style="font-size:0.6rem">OUT</span>' : ''}
                         </div>
                         <div class="leaderboard-player-stats">
-                            🏴 ${p.territoryCount} territories · ⚔️ ${p.totalArmies} armies
+                            🏳️ ${p.territoryCount} territories · ⚔️ ${p.totalArmies} armies
                         </div>
                     </div>
                 </div>
