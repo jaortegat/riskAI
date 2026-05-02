@@ -832,7 +832,7 @@ class RiskAIGame {
         const dDice = result.defenderDice.map(d => `<span class="die-sm defender">${d}</span>`).join('');
         
         let extra = '';
-        if (result.conquered) extra += '<div class="text-warning small">\u{1F3F4} Conquered!</div>';
+        if (result.conquered) extra += '<div class="text-warning small">\u{1F3F3} Conquered!</div>';
         if (result.eliminatedPlayer) extra += `<div class="text-danger small">\u{1F480} ${result.eliminatedPlayer} eliminated!</div>`;
         
         panel.innerHTML = `

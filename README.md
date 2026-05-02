@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="RiskAI.png" alt="RiskAI - Online Strategy Game" width="1000"/>
+</p>
+
 # 🌍 RiskAI - World Domination
 
 A modern web-based implementation of the classic Risk board game with CPU opponents, AI agent support via MCP (Model Context Protocol), and real-time multiplayer — built with the latest Java technologies.
@@ -21,44 +25,48 @@ A modern web-based implementation of the classic Risk board game with CPU oppone
 |-------|-----------|---------|
 | Language | Java | 25 |
 | Framework | Spring Boot | 4.0.2 |
-| ORM | Spring Data JPA (Hibernate 7) | — |
-| Security | Spring Security | 7 |
 | Real-time | Spring WebSocket (STOMP/SockJS) | — |
 | AI Integration | Spring AI MCP Server | 2.0.0-M2 |
 | Templating | Thymeleaf | — |
 | Database | H2 (dev) / PostgreSQL (prod) | — |
 | Serialization | Jackson 3 | — |
 | UI | Bootstrap 5 | — |
-| Code Gen | Lombok | 1.18.42 |
-| Coverage | JaCoCo | 0.8.13 |
-| Build | Maven | 3.9+ |
+| Build | Maven (or Maven Wrapper) | 3.9+ |
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- Java 25 or higher
-- Maven 3.9+
+- **Java 25 or higher** — always required (unless using Docker)
+- **Maven 3.9+** — optional; the project includes a Maven Wrapper (`mvnw` / `mvnw.cmd`) that downloads Maven automatically if it is not installed
 
 ### Run
+
+#### Option 1 — Maven Wrapper (no Maven installation required)
+
+Windows:
+```cmd
+.\mvnw.cmd spring-boot:run
+```
+
+Linux / macOS:
+```bash
+./mvnw spring-boot:run
+```
+
+#### Option 2 — Maven (if already installed)
 
 ```bash
 mvn spring-boot:run
 ```
 
+#### Option 3 — Pre-built JAR (if you have already run `mvn package`)
+
+```bash
+java -jar target/riskai-game-1.0.0-SNAPSHOT.jar
+```
+
 Open http://localhost:8080 in your browser.
-
-### Build
-
-```bash
-mvn clean install
-```
-
-### Test
-
-```bash
-mvn test
-```
 
 ### Docker
 
@@ -78,12 +86,6 @@ With memory limit (JVM auto-adjusts via `MaxRAMPercentage`):
 
 ```bash
 docker run -d -p 8080:8080 -m 512m --name riskai riskai
-```
-
-With production profile:
-
-```bash
-docker run -d -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prod --name riskai riskai
 ```
 
 Useful commands:
@@ -189,24 +191,6 @@ spring:
           mcp-endpoint: /mcp
 ```
 
-### Production Database
-
-The default configuration uses an in-memory H2 database. To use PostgreSQL in production, edit `application-prod.properties`:
-
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/riskdb
-spring.datasource.username=your_username
-spring.datasource.password=your_password
-spring.datasource.driver-class-name=org.postgresql.Driver
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
-```
-
-Run with the production profile:
-
-```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=prod
-```
-
 ## 🔌 API Reference
 
 ### REST API (`/api/games`)
@@ -226,28 +210,9 @@ mvn spring-boot:run -Dspring-boot.run.profiles=prod
 | POST | `/api/games/{id}/fortify` | Move armies |
 | POST | `/api/games/{id}/skipFortify` | Skip fortify phase |
 
-### WebSocket (STOMP over SockJS)
-
-Connect to `/ws` using SockJS/STOMP. Subscribe to `/topic/game/{gameId}` for real-time events:
-
-| Event | Description |
-|-------|-------------|
-| `GAME_UPDATE` | Game state changed |
-| `GAME_STARTED` | Game began |
-| `GAME_OVER` | Game finished (includes winner) |
-| `ATTACK_RESULT` | Dice roll outcome |
-| `CPU_FORTIFY` | CPU army movement |
-| `CPU_TURN_END` | CPU finished turn |
-| `PLAYER_JOINED` | New player joined |
-| `PLAYER_LEFT` | Player left |
-| `CHAT` | Chat message (on `/topic/game/{gameId}/chat`) |
-| `ERROR` | Error (targeted to specific player) |
-
-Send actions to `/app/game/{gameId}/{action}` where action is: `reinforce`, `attack`, `endAttack`, `fortify`, `skipFortify`, `chat`.
-
 ### MCP Server (`/mcp`)
 
-The MCP Streamable HTTP endpoint exposes game operations as tools for AI agents. See the [MCP Server Report](MCP_SERVER_REPORT.md) for full details.
+The MCP Streamable HTTP endpoint exposes game operations as tools for AI agents:
 
 | Tool | Description | Session Required |
 |------|-------------|:---:|

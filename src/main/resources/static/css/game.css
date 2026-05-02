@@ -261,7 +261,7 @@ body {
 
 /* Game Log */
 .game-log {
-    max-height: 300px;
+    max-height: 390px;
     overflow-y: auto;
     font-size: 0.72rem;
     line-height: 1.4;
